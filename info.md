@@ -11,8 +11,10 @@ Integration for the [Jullix](https://wiki.jullix.be/) Energy Management System (
 - **Metering**: Electricity import/export, gas consumption
 - **EV chargers**: Status and power; full control (switch, max power number, mode select, optional service)
 - **Smart plugs**: Power and plug energy today; on/off control
-- **Cost & savings**: Optional cost and savings sensors
-- **Algorithm, tariff, weather**: Optimization overview, tariff, and weather forecast sensors; services for run-hourly and assign charge session
+- **Cost & savings**: Optional cost, savings, and cost total this month sensors
+- **Energy statistics**: Optional daily, monthly, yearly energy statistics sensors
+- **Weather alarm**: Sensor for active weather alerts
+- **Algorithm, tariff, weather**: Optimization overview, tariff, and weather forecast sensors; services for run-hourly, assign charge session, and update tariff
 - **Jullix-Direct**: Local real-time data without internet
 
 ## Installation

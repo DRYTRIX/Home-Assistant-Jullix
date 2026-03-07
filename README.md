@@ -34,10 +34,12 @@ This integration connects Home Assistant to your Jullix installation via the clo
 
 ### Extras
 
-- **Cost & savings**: Optional cost and savings sensors (when enabled in options)
+- **Cost & savings**: Optional cost and savings sensors plus **cost total this month** (when enabled in options)
+- **Energy statistics**: Optional daily, monthly, and yearly energy statistics sensors (when enabled in options)
+- **Weather alarm**: Sensor for active weather alerts (on/off with optional alert details)
 - **Jullix-Direct**: Optional local connection for real-time data without internet
 - **Algorithm & optimization**: Sensors for optimization overview; service `jullix.run_algorithm_hourly` to trigger hourly optimization
-- **Tariff & weather**: Tariff and weather forecast sensors; charge session assignment via `jullix.assign_chargersession`
+- **Tariff & weather**: Tariff and weather forecast sensors; **update tariff** via `jullix.update_tariff`; charge session assignment via `jullix.assign_chargersession`
 
 ---
 
@@ -78,7 +80,8 @@ This integration connects Home Assistant to your Jullix installation via the clo
 After setup, click **Configure** on the Jullix integration to adjust:
 
 - **Update interval**: 30–300 seconds (default: 60)
-- **Enable cost & savings sensors**: Show cost and savings data
+- **Enable cost & savings sensors**: Show cost, savings, and cost total this month
+- **Enable energy statistics sensors**: Show daily, monthly, and yearly energy statistics
 - **Enable charger control**: Expose charger switch, max power number, and mode select
 - **Enable plug control**: Allow turning smart plugs on/off
 - **Prefer local Jullix-Direct**: Use local device for real-time data when configured
@@ -90,6 +93,7 @@ When the integration is loaded, these services are available under the `jullix` 
 - **`jullix.set_charger_control`** – Set charger options: `installation_id`, `charger_mac`, and optionally `enabled`, `mode` (eco/turbo/max/block), `max_power` (kW).
 - **`jullix.run_algorithm_hourly`** – Run the hourly optimization algorithm for an installation (`installation_id`).
 - **`jullix.assign_chargersession`** – Assign a charge session: `installation_id`, `session_id`, and optionally `charger_mac`, `car_id`.
+- **`jullix.update_tariff`** – Update the energy tariff for an installation: `installation_id`, `tariff` (e.g. single, dual).
 
 ---
 
@@ -168,6 +172,7 @@ The repo includes a pytest test suite and GitHub Actions workflow:
 
 ## Changelog
 
+- **1.6.0** – New: energy statistics sensors (daily/monthly/yearly, optional); weather alarm sensor; cost total this month (when cost enabled); `jullix.update_tariff` service; option “Enable energy statistics sensors”. Extended API client and coordinator tests; config flow test fixes; live API smoke tests for cost, tariff, algorithm, weather, statistics.
 - **1.5.2** – Docs: fix screenshot references (remove deleted energy-placeholder; README and info.md use existing screenshots only).
 - **1.5.1** – Hassfest: remove invalid `icon` key from manifest; README: add repository setup (HACS description/topics) section.
 - **1.5.0** – CI: use `requirements-test-ci.txt` for faster unit tests (config flow/entity tests skipped in CI); hassfest validation workflow; config flow test fix (options flow handler); REPO_SETUP.md and docs updates.
