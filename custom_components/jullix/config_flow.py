@@ -8,7 +8,7 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.config_entries import ConfigFlow, OptionsFlowWithReload
+from homeassistant.config_entries import ConfigFlow, OptionsFlow
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
 
@@ -248,7 +248,7 @@ class JullixConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
 
-class JullixOptionsFlowHandler(OptionsFlowWithReload):
+class JullixOptionsFlowHandler(OptionsFlow):
     """Handle Jullix options."""
 
     async def async_step_init(
@@ -256,7 +256,12 @@ class JullixOptionsFlowHandler(OptionsFlowWithReload):
     ) -> FlowResult:
         """Manage the options."""
         if user_input is not None:
-            return self.async_create_entry(data=user_input)
+            result = self.async_create_entry(data=user_input)
+            # Reload integration so new options take effect (same behavior as OptionsFlowWithReload)
+            self.hass.async_create_task(
+                self.hass.config_entries.async_reload(self.config_entry.entry_id)
+            )
+            return result
 
         options = self.config_entry.options or {}
         return self.async_show_form(

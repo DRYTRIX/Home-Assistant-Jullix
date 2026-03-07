@@ -81,7 +81,7 @@ class JullixChargerMaxPowerNumber(
     _attr_native_min_value = CHARGER_MAX_POWER_MIN
     _attr_native_max_value = CHARGER_MAX_POWER_MAX
     _attr_native_step = CHARGER_MAX_POWER_STEP
-    _attr_native_unit_of_measurement = UnitOfPower.KILOWATT
+    _attr_native_unit_of_measurement = UnitOfPower.KILO_WATT
     _attr_mode = NumberMode.SLIDER
     _attr_has_entity_name = True
 
