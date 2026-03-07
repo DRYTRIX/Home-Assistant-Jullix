@@ -203,11 +203,13 @@ async def test_options_flow_init_shows_form():
         OPTION_USE_LOCAL: True,
     }
     handler = JullixOptionsFlowHandler.__new__(JullixOptionsFlowHandler)
-    object.__setattr__(handler, "config_entry", config_entry)
     handler.hass = MagicMock()
     handler.async_show_form = MagicMock(return_value={"type": "form"})
     handler.async_create_entry = MagicMock(return_value={"type": "create_entry"})
-    result = await handler.async_step_init(None)
+    with patch.object(
+        JullixOptionsFlowHandler, "config_entry", property(lambda self: config_entry)
+    ):
+        result = await handler.async_step_init(None)
     handler.async_show_form.assert_called_once()
     call_kw = handler.async_show_form.call_args[1]
     assert call_kw["step_id"] == "init"
@@ -220,7 +222,6 @@ async def test_options_flow_submit_creates_entry():
     config_entry = MagicMock()
     config_entry.options = {}
     handler = JullixOptionsFlowHandler.__new__(JullixOptionsFlowHandler)
-    object.__setattr__(handler, "config_entry", config_entry)
     handler.hass = MagicMock()
     handler.async_create_entry = MagicMock(return_value={"type": "create_entry"})
     user_input = {
@@ -230,7 +231,10 @@ async def test_options_flow_submit_creates_entry():
         OPTION_ENABLE_PLUG_CONTROL: True,
         OPTION_USE_LOCAL: False,
     }
-    await handler.async_step_init(user_input)
+    with patch.object(
+        JullixOptionsFlowHandler, "config_entry", property(lambda self: config_entry)
+    ):
+        await handler.async_step_init(user_input)
     handler.async_create_entry.assert_called_once_with(data=user_input)
 
 

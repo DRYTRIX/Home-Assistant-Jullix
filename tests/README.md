@@ -2,10 +2,8 @@
 
 Run the test suite from the repo root:
 
-```bash
-pip install -r requirements-test.txt
-python -m pytest tests/ -v
-```
+- **Quick / CI** (no Home Assistant): `pip install -r requirements-test-ci.txt` then `python -m pytest tests/ -v` — config flow and entity tests are skipped.
+- **Full suite** (including config flow and entity tests): `pip install -r requirements-test.txt` then `python -m pytest tests/ -v`
 
 Tests cover:
 
@@ -24,7 +22,7 @@ Home Assistant is mocked for most tests so they run without a full HA install. C
 
 The workflow in `.github/workflows/test.yml` runs on every push and pull request to `main`/`master`:
 
-1. **Unit tests** – Always run (no secrets).
+1. **Unit tests** – Install `requirements-test-ci.txt` (no full Home Assistant); config flow and entity tests are skipped. No secrets required.
 2. **Live API smoke test** – Runs real API calls when these **repository secrets** are set:
 
 | Secret name | Description |

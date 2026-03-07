@@ -147,7 +147,7 @@ Replace `xxx` with your installation ID.
 
 The repo includes a pytest test suite and GitHub Actions workflow:
 
-- **Unit tests**: API client, coordinator merge, switch/sensor helpers, service handlers. Run locally: `pip install -r requirements-test.txt && python -m pytest tests/ -v`
+- **Unit tests**: API client, coordinator merge, switch/sensor helpers, service handlers. CI uses lightweight deps (`requirements-test-ci.txt`); config flow and entity tests are skipped there. For the full suite including those tests locally: `pip install -r requirements-test.txt && python -m pytest tests/ -v`
 - **Live API tests**: Optional smoke tests against the real API when `JULLIX_API_TOKEN` and `JULLIX_INSTALLATION_ID` are set (e.g. as GitHub Actions secrets). See [tests/README.md](tests/README.md) for details.
 
 ## Documentation
@@ -168,6 +168,7 @@ The repo includes a pytest test suite and GitHub Actions workflow:
 
 ## Changelog
 
+- **1.5.0** – CI: use `requirements-test-ci.txt` for faster unit tests (config flow/entity tests skipped in CI); hassfest validation workflow; config flow test fix (options flow handler); REPO_SETUP.md and docs updates.
 - **1.4.0** – API client: use `ThreadedResolver` for aiohttp (improved DNS compatibility); HACS brand icon; test updates.
 
 ---

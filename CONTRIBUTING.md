@@ -10,9 +10,8 @@
    # or: .venv\Scripts\activate  # Windows
    ```
 3. Install test dependencies:
-   ```bash
-   pip install -r requirements-test.txt
-   ```
+   - **CI / quick run** (no Home Assistant): `pip install -r requirements-test-ci.txt` — config flow and entity tests are skipped.
+   - **Full tests** (including config flow and entity tests): `pip install -r requirements-test.txt`
 
 ## Running tests
 
@@ -50,4 +49,4 @@ In GitHub Actions, add these as repository secrets (**Settings → Secrets and v
 
 ## Submitting changes
 
-Open a pull request against `main`. The CI workflow will run unit tests (and live API tests if secrets are configured).
+Open a pull request against `main`. The CI workflow uses `requirements-test-ci.txt` (no full Home Assistant install) and runs unit tests; live API tests run if secrets are configured.

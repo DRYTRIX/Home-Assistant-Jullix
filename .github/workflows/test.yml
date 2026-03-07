@@ -21,10 +21,15 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements-test.txt
+          pip install -r requirements-test-ci.txt
+
+      - name: Show environment
+        run: |
+          python -m pip list
+          python -m pytest --version
 
       - name: Run unit tests
-        run: python -m pytest tests/ -v --tb=short
+        run: python -m pytest tests/ -v --tb=short -x
 
       - name: Type check (mypy)
         run: |
@@ -46,7 +51,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements-test.txt
+          pip install -r requirements-test-ci.txt
 
       - name: Run live API smoke test
         env:
