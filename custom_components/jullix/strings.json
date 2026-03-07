@@ -1,0 +1,67 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Jullix API Token",
+        "description": "Enter your Jullix API token from Mijn Jullix → Profiel → API-tokens. The token is used to authenticate with the Jullix platform.",
+        "data": {
+          "api_token": "API Token"
+        },
+        "data_description": {
+          "api_token": "JWT token from the Jullix portal"
+        }
+      },
+      "installations": {
+        "title": "Select Installation(s)",
+        "description": "Choose which Jullix installation(s) to add. You can select multiple installations.",
+        "data": {
+          "install_ids": "Installations"
+        },
+        "data_description": {
+          "install_ids": "Installations to monitor"
+        }
+      },
+      "local": {
+        "title": "Jullix-Direct (Optional)",
+        "description": "Optionally add a local Jullix device for real-time data without internet. Leave empty to skip. Use jullix.local or the IP address.",
+        "data": {
+          "local_host": "Local host (jullix.local or IP)"
+        },
+        "data_description": {
+          "local_host": "Hostname or IP of local Jullix device"
+        }
+      }
+    },
+    "error": {
+      "invalid_token": "Invalid API token. Please check your token in Mijn Jullix → Profiel → API-tokens.",
+      "cannot_connect": "Failed to connect to Jullix. Check your internet connection.",
+      "no_installations": "No installations found for this account.",
+      "local_connection_failed": "Could not connect to local Jullix device. Check hostname or IP."
+    },
+    "abort": {
+      "already_configured": "This Jullix account is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Jullix Options",
+        "description": "Configure update interval and entity groups.",
+        "data": {
+          "update_interval": "Update interval (seconds)",
+          "enable_cost": "Enable cost & savings sensors",
+          "enable_charger_control": "Enable charger control switches",
+          "enable_plug_control": "Enable plug control switches",
+          "use_local": "Prefer local Jullix-Direct when available"
+        },
+        "data_description": {
+          "update_interval": "How often to fetch data (30-300 seconds)",
+          "enable_cost": "Show cost and savings sensors",
+          "enable_charger_control": "Allow controlling chargers from Home Assistant",
+          "enable_plug_control": "Allow controlling smart plugs from Home Assistant",
+          "use_local": "Use local Jullix for real-time data when configured"
+        }
+      }
+    }
+  }
+}
