@@ -30,6 +30,13 @@
         "data_description": {
           "local_host": "Hostname or IP of local Jullix device"
         }
+      },
+      "reauth": {
+        "title": "API Token Expired",
+        "description": "Your Jullix API token is invalid or expired. Create a new token in Mijn Jullix → Profiel → API-tokens and enter it below.",
+        "data": {
+          "api_token": "New API Token"
+        }
       }
     },
     "error": {
@@ -39,7 +46,8 @@
       "local_connection_failed": "Could not connect to local Jullix device. Check hostname or IP."
     },
     "abort": {
-      "already_configured": "This Jullix account is already configured."
+      "already_configured": "This Jullix account is already configured.",
+      "reauth_successful": "API token updated successfully. The integration will reload."
     }
   },
   "options": {

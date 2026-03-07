@@ -74,19 +74,17 @@ async def test_set_charger_control_with_mode_and_max_power(hass_with_jullix):
 
 
 @pytest.mark.asyncio
-async def test_set_charger_control_unknown_installation(hass_with_jullix):
-    """set_charger_control does not call API when installation_id not in any entry."""
+async def test_set_charger_control_unknown_installation_raises(hass_with_jullix):
+    """set_charger_control raises HomeAssistantError when installation_id not in any entry."""
+    from homeassistant.exceptions import HomeAssistantError
     call = MagicMock()
     call.data = {
         "installation_id": "unknown-install",
         "charger_mac": "AA:BB:CC",
         "enabled": True,
     }
-    api = hass_with_jullix.data[DOMAIN]["entry-1"]["api_client"]
-
-    await _handle_set_charger_control(hass_with_jullix, call)
-
-    api.set_charger_control.assert_not_called()
+    with pytest.raises(HomeAssistantError, match="No Jullix config entry found"):
+        await _handle_set_charger_control(hass_with_jullix, call)
 
 
 @pytest.mark.asyncio

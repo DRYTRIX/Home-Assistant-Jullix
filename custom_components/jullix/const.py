@@ -66,6 +66,6 @@ OPTION_ENABLE_PLUG_CONTROL = "enable_plug_control"
 OPTION_USE_LOCAL = "use_local"
 OPTION_DEFAULT_INSTALL = "default_install"
 
-# Alias for coordinator/__init__
+# Aliases used by coordinator and __init__ (same option key).
 CONF_UPDATE_INTERVAL = OPTION_SCAN_INTERVAL
 DEFAULT_UPDATE_INTERVAL = DEFAULT_SCAN_INTERVAL

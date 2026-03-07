@@ -13,8 +13,14 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-# Mock homeassistant so we can import the integration without installing HA
-if "homeassistant" not in sys.modules:
+# Mock homeassistant only when not installed (so config flow tests can use real HA when available)
+try:
+    import homeassistant  # noqa: F401
+    _HA_AVAILABLE = True
+except ImportError:
+    _HA_AVAILABLE = False
+
+if not _HA_AVAILABLE and "homeassistant" not in sys.modules:
     from unittest.mock import MagicMock
     ha_mock = MagicMock()
     ha_mock.config_entries.ConfigEntry = MagicMock()
@@ -31,10 +37,16 @@ if "homeassistant" not in sys.modules:
     ha_mock.components.sensor.SensorEntity = MagicMock()
     ha_mock.components.sensor.SensorDeviceClass = MagicMock()
     ha_mock.components.sensor.SensorStateClass = MagicMock()
+    ha_mock.data_entry_flow = MagicMock()
+    ha_mock.core.callback = lambda f: f
+    ha_mock.exceptions = MagicMock()
+    ha_mock.exceptions.HomeAssistantError = type("HomeAssistantError", (Exception,), {})
     sys.modules["homeassistant"] = ha_mock
     sys.modules["homeassistant.config_entries"] = ha_mock.config_entries
     sys.modules["homeassistant.const"] = ha_mock.const
     sys.modules["homeassistant.core"] = ha_mock.core
+    sys.modules["homeassistant.data_entry_flow"] = ha_mock.data_entry_flow
+    sys.modules["homeassistant.exceptions"] = ha_mock.exceptions
     sys.modules["homeassistant.helpers"] = ha_mock.helpers
     sys.modules["homeassistant.helpers.config_validation"] = ha_mock.helpers.config_validation
     sys.modules["homeassistant.helpers.update_coordinator"] = ha_mock.helpers.update_coordinator
@@ -43,6 +55,9 @@ if "homeassistant" not in sys.modules:
     sys.modules["homeassistant.components.number"] = ha_mock.components.number
     sys.modules["homeassistant.components.select"] = ha_mock.components.select
     sys.modules["homeassistant.components.sensor"] = ha_mock.components.sensor
+else:
+    # When HA is installed, use real HA (e.g. for config_flow tests)
+    pass
 
 
 @pytest.fixture

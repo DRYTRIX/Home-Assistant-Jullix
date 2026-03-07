@@ -7,9 +7,10 @@ from typing import Any
 
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, SOURCE_REAUTH
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 
 from .api import JullixApiClient
@@ -77,6 +78,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     options = entry.options or {}
     update_interval = options.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
 
+    async def _trigger_reauth() -> None:
+        hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={"source": SOURCE_REAUTH, "entry_id": entry.entry_id},
+            data=entry.data,
+        )
+
     coordinator = JullixDataUpdateCoordinator(
         hass=hass,
         api_client=api_client,
@@ -85,6 +93,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         local_host=entry.data.get(CONF_LOCAL_HOST),
         use_local=options.get(OPTION_USE_LOCAL, False),
         enable_cost=options.get(OPTION_ENABLE_COST, False),
+        on_auth_error=_trigger_reauth,
     )
 
     await coordinator.async_config_entry_first_refresh()
@@ -156,14 +165,14 @@ async def _handle_set_charger_control(hass: HomeAssistant, call: ServiceCall) ->
             payload["config"] = config
 
     if not payload:
-        _LOGGER.warning("set_charger_control called with no options")
-        return
+        raise HomeAssistantError(
+            "set_charger_control requires at least one of: enabled, mode, max_power"
+        )
 
     dom = hass.data.get(DOMAIN)
     if not dom:
-        _LOGGER.warning("Jullix integration not loaded")
-        return
-    for entry_id, data in dom.items():
+        raise HomeAssistantError("Jullix integration is not loaded")
+    for _entry_id, data in dom.items():
         if not isinstance(data, dict):
             continue
         install_ids = data.get("install_ids") or []
@@ -177,9 +186,8 @@ async def _handle_set_charger_control(hass: HomeAssistant, call: ServiceCall) ->
                 await coordinator.async_request_refresh()
             return
 
-    _LOGGER.warning(
-        "No Jullix config entry found for installation_id %s",
-        installation_id,
+    raise HomeAssistantError(
+        f"No Jullix config entry found for installation_id {installation_id}"
     )
 
 
@@ -188,8 +196,7 @@ async def _handle_run_algorithm_hourly(hass: HomeAssistant, call: ServiceCall) -
     installation_id = call.data["installation_id"]
     dom = hass.data.get(DOMAIN)
     if not dom:
-        _LOGGER.warning("Jullix integration not loaded")
-        return
+        raise HomeAssistantError("Jullix integration is not loaded")
     for _entry_id, data in dom.items():
         if not isinstance(data, dict):
             continue
@@ -201,9 +208,8 @@ async def _handle_run_algorithm_hourly(hass: HomeAssistant, call: ServiceCall) -
             if coordinator := data.get("coordinator"):
                 await coordinator.async_request_refresh()
             return
-    _LOGGER.warning(
-        "No Jullix config entry found for installation_id %s",
-        installation_id,
+    raise HomeAssistantError(
+        f"No Jullix config entry found for installation_id {installation_id}"
     )
 
 
@@ -218,8 +224,7 @@ async def _handle_assign_chargersession(hass: HomeAssistant, call: ServiceCall) 
         payload["car_id"] = call.data["car_id"]
     dom = hass.data.get(DOMAIN)
     if not dom:
-        _LOGGER.warning("Jullix integration not loaded")
-        return
+        raise HomeAssistantError("Jullix integration is not loaded")
     for _entry_id, data in dom.items():
         if not isinstance(data, dict):
             continue
@@ -231,14 +236,49 @@ async def _handle_assign_chargersession(hass: HomeAssistant, call: ServiceCall) 
             if coordinator := data.get("coordinator"):
                 await coordinator.async_request_refresh()
             return
-    _LOGGER.warning(
-        "No Jullix config entry found for installation_id %s",
-        installation_id,
+    raise HomeAssistantError(
+        f"No Jullix config entry found for installation_id {installation_id}"
     )
+
+
+async def async_get_config_entry_diagnostics(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> dict[str, Any]:
+    """Return diagnostics for the config entry (no sensitive data)."""
+    entry_data = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+    if not isinstance(entry_data, dict):
+        return {"config_entry_id": entry.entry_id, "loaded": False}
+    coordinator = entry_data.get("coordinator")
+    result: dict[str, Any] = {
+        "config_entry_id": entry.entry_id,
+        "installation_ids": list(entry_data.get("install_ids", [])),
+        "local_host_configured": bool(entry_data.get("local_host")),
+        "options": dict(entry.options) if entry.options else {},
+    }
+    if coordinator:
+        result["coordinator"] = {
+            "last_update_success": coordinator.last_update_success,
+            "last_update_time": (
+                coordinator.last_update_time.isoformat()
+                if coordinator.last_update_time
+                else None
+            ),
+            "last_installation_errors": {
+                k: str(v) for k, v in getattr(
+                    coordinator, "last_installation_errors", {}
+                ).items()
+            },
+        }
+    return result
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
+        entry_data = hass.data[DOMAIN].get(entry.entry_id)
+        if isinstance(entry_data, dict):
+            coordinator = entry_data.get("coordinator")
+            if coordinator and hasattr(coordinator, "async_shutdown"):
+                await coordinator.async_shutdown()
         hass.data[DOMAIN].pop(entry.entry_id, None)
     return unload_ok

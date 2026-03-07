@@ -14,9 +14,11 @@ Tests cover:
 - **test_sensor_helpers.py** – `_extract_plug_energy_total` for plug energy responses
 - **test_services.py** – Service handlers (set_charger_control, run_algorithm_hourly, assign_chargersession)
 - **test_switch.py** – `_is_enabled` logic for charger/plug state
+- **test_config_flow.py** – Config flow steps and options (skipped unless real Home Assistant is installed)
+- **test_entities.py** – Sensor/switch/number/select setup and unique_ids (skipped unless real Home Assistant is installed)
 - **test_live_api.py** – Live API smoke tests (skipped unless env vars are set; see below)
 
-Home Assistant is mocked so tests run without a full HA install.
+Home Assistant is mocked for most tests so they run without a full HA install. Config flow and entity tests require real `homeassistant` (e.g. from `requirements-test.txt`) and are skipped when the mock is active.
 
 ## GitHub Actions
 

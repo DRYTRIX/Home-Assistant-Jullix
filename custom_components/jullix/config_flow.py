@@ -201,6 +201,52 @@ class JullixConfigFlow(ConfigFlow, domain=DOMAIN):
             ),
         )
 
+    async def async_step_reauth(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle reauth when API token is invalid or expired."""
+        return await self._async_reauth_show_form(user_input)
+
+    async def _async_reauth_show_form(
+        self, user_input: dict[str, Any] | None = None, errors: dict[str, str] | None = None
+    ) -> FlowResult:
+        """Show reauth form for new API token."""
+        errors = errors or {}
+        if user_input is not None:
+            token = (user_input.get(CONF_API_TOKEN) or "").strip()
+            if not token:
+                errors["base"] = "invalid_token"
+            else:
+                try:
+                    await _validate_token(self.hass, token)
+                    entry = self.hass.config_entries.async_get_entry(
+                        self.context["entry_id"]
+                    )
+                    if entry:
+                        self.hass.config_entries.async_update_entry(
+                            entry,
+                            data={**entry.data, CONF_API_TOKEN: token},
+                        )
+                        self.hass.async_create_task(
+                            self.hass.config_entries.async_reload(entry.entry_id)
+                        )
+                        return self.async_abort(reason="reauth_successful")
+                    errors["base"] = "cannot_connect"
+                except ValueError:
+                    errors["base"] = "no_installations"
+                except Exception as exc:
+                    _LOGGER.debug("Reauth token validation failed: %s", exc)
+                    errors["base"] = "invalid_token"
+
+        return self.async_show_form(
+            step_id="reauth",
+            data_schema=vol.Schema(
+                {vol.Required(CONF_API_TOKEN): str}
+            ),
+            errors=errors,
+            description_placeholders={"entry_id": self.context.get("entry_id", "")},
+        )
+
 
 class JullixOptionsFlowHandler(OptionsFlowWithReload):
     """Handle Jullix options."""

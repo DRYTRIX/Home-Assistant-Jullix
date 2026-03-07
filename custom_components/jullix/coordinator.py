@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Coroutine
 from datetime import date, timedelta
-from typing import Any
+from typing import Any, Callable
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import JullixApiClient
+from .api import JullixApiClient, JullixAuthError
 from .const import DEFAULT_UPDATE_INTERVAL, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -27,6 +28,7 @@ class JullixDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         local_host: str | None = None,
         use_local: bool = False,
         enable_cost: bool = False,
+        on_auth_error: Callable[[], Coroutine[Any, Any, None]] | None = None,
     ) -> None:
         """Initialize the coordinator."""
         super().__init__(
@@ -40,32 +42,46 @@ class JullixDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._local_host = local_host
         self._use_local = use_local and local_host
         self._enable_cost = enable_cost
+        self._on_auth_error = on_auth_error
         self.data: dict[str, Any] = {}
+        self.last_installation_errors: dict[str, Exception] = {}
+        self._local_client = None
+        if self._use_local and local_host:
+            from .local_client import JullixLocalClient
+            self._local_client = JullixLocalClient(local_host)
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch data from the API for all installations."""
         result: dict[str, Any] = {}
+        self.last_installation_errors.clear()
         for install_id in self._install_ids:
             try:
                 install_data = await self._fetch_installation_data(install_id)
                 if install_data:
                     result[install_id] = install_data
             except Exception as err:
-                _LOGGER.error(
+                self.last_installation_errors[install_id] = err
+                if isinstance(err, JullixAuthError) and self._on_auth_error:
+                    self.hass.async_create_task(self._on_auth_error())
+                _LOGGER.warning(
                     "Error fetching data for installation %s: %s",
                     install_id,
                     err,
-                    exc_info=True,
                 )
-                raise UpdateFailed(f"Failed to update: {err}") from err
+        if not result and self._install_ids:
+            last_err = self.last_installation_errors.get(
+                self._install_ids[0], Exception("No data")
+            )
+            _LOGGER.error(
+                "All installations failed to update: %s",
+                self.last_installation_errors,
+            )
+            raise UpdateFailed(f"Failed to update: {last_err}") from last_err
 
         # Optionally merge local Jullix-Direct data into first installation
-        if self._use_local and result and self._install_ids:
+        if self._local_client and result and self._install_ids:
             try:
-                from .local_client import JullixLocalClient
-
-                local_client = JullixLocalClient(self._local_host or "")
-                local_data = await local_client.get_ems_data()
+                local_data = await self._local_client.get_ems_data()
                 if local_data:
                     first_id = self._install_ids[0]
                     result[first_id] = _merge_local_data(
@@ -196,6 +212,12 @@ class JullixDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _LOGGER.debug("Weather forecast failed for %s: %s", install_id, e)
 
         return data
+
+    async def async_shutdown(self) -> None:
+        """Release resources (e.g. local client session). Call on config entry unload."""
+        if self._local_client:
+            await self._local_client.close()
+            self._local_client = None
 
 
 def _merge_local_data(platform_data: dict[str, Any], local_data: dict[str, Any]) -> dict[str, Any]:

@@ -26,6 +26,12 @@ jobs:
       - name: Run unit tests
         run: python -m pytest tests/ -v --tb=short
 
+      - name: Type check (mypy)
+        run: |
+          pip install mypy
+          mypy custom_components/jullix --ignore-missing-imports --no-error-summary 2>/dev/null || true
+        # Optional: remove "|| true" to fail the job on type errors once baseline is clean
+
   live-api:
     name: Live API smoke test
     runs-on: ubuntu-latest
