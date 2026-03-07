@@ -24,6 +24,7 @@ from .const import (
     OPTION_ENABLE_CHARGER_CONTROL,
     OPTION_ENABLE_COST,
     OPTION_ENABLE_PLUG_CONTROL,
+    OPTION_ENABLE_STATISTICS,
     OPTION_SCAN_INTERVAL,
     OPTION_USE_LOCAL,
 )
@@ -152,6 +153,7 @@ class JullixConfigFlow(ConfigFlow, domain=DOMAIN):
                     options={
                         OPTION_SCAN_INTERVAL: DEFAULT_SCAN_INTERVAL,
                         OPTION_ENABLE_COST: False,
+                        OPTION_ENABLE_STATISTICS: False,
                         OPTION_ENABLE_CHARGER_CONTROL: True,
                         OPTION_ENABLE_PLUG_CONTROL: True,
                         OPTION_USE_LOCAL: False,
@@ -186,6 +188,7 @@ class JullixConfigFlow(ConfigFlow, domain=DOMAIN):
                 options={
                     OPTION_SCAN_INTERVAL: DEFAULT_SCAN_INTERVAL,
                     OPTION_ENABLE_COST: False,
+                    OPTION_ENABLE_STATISTICS: False,
                     OPTION_ENABLE_CHARGER_CONTROL: True,
                     OPTION_ENABLE_PLUG_CONTROL: True,
                     OPTION_USE_LOCAL: True,
@@ -275,6 +278,10 @@ class JullixOptionsFlowHandler(OptionsFlow):
                     vol.Required(
                         OPTION_ENABLE_COST,
                         default=options.get(OPTION_ENABLE_COST, False),
+                    ): bool,
+                    vol.Required(
+                        OPTION_ENABLE_STATISTICS,
+                        default=options.get(OPTION_ENABLE_STATISTICS, False),
                     ): bool,
                     vol.Required(
                         OPTION_ENABLE_CHARGER_CONTROL,

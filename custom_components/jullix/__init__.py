@@ -22,6 +22,7 @@ from .const import (
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
     OPTION_ENABLE_COST,
+    OPTION_ENABLE_STATISTICS,
     OPTION_USE_LOCAL,
 )
 from .coordinator import JullixDataUpdateCoordinator
@@ -38,6 +39,7 @@ PLATFORMS: list[Platform] = [
 SERVICE_SET_CHARGER_CONTROL = "set_charger_control"
 SERVICE_RUN_ALGORITHM_HOURLY = "run_algorithm_hourly"
 SERVICE_ASSIGN_CHARGERSESSION = "assign_chargersession"
+SERVICE_UPDATE_TARIFF = "update_tariff"
 CHARGER_MODES = ["eco", "turbo", "max", "block"]
 
 SCHEMA_SET_CHARGER_CONTROL = vol.Schema(
@@ -60,6 +62,13 @@ SCHEMA_ASSIGN_CHARGERSESSION = vol.Schema(
         vol.Required("session_id"): cv.string,
         vol.Optional("charger_mac"): cv.string,
         vol.Optional("car_id"): cv.string,
+    }
+)
+
+SCHEMA_UPDATE_TARIFF = vol.Schema(
+    {
+        vol.Required("installation_id"): cv.string,
+        vol.Required("tariff"): cv.string,
     }
 )
 
@@ -93,6 +102,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         local_host=entry.data.get(CONF_LOCAL_HOST),
         use_local=options.get(OPTION_USE_LOCAL, False),
         enable_cost=options.get(OPTION_ENABLE_COST, False),
+        enable_statistics=options.get(OPTION_ENABLE_STATISTICS, False),
         on_auth_error=_trigger_reauth,
     )
 
@@ -138,6 +148,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             SERVICE_ASSIGN_CHARGERSESSION,
             assign_session_handler,
             schema=SCHEMA_ASSIGN_CHARGERSESSION,
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_UPDATE_TARIFF):
+        async def update_tariff_handler(call: ServiceCall) -> None:
+            await _handle_update_tariff(hass, call)
+
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_UPDATE_TARIFF,
+            update_tariff_handler,
+            schema=SCHEMA_UPDATE_TARIFF,
         )
 
     return True
@@ -233,6 +254,29 @@ async def _handle_assign_chargersession(hass: HomeAssistant, call: ServiceCall) 
         api_client = data.get("api_client")
         if api_client:
             await api_client.assign_chargersession(payload)
+            if coordinator := data.get("coordinator"):
+                await coordinator.async_request_refresh()
+            return
+    raise HomeAssistantError(
+        f"No Jullix config entry found for installation_id {installation_id}"
+    )
+
+
+async def _handle_update_tariff(hass: HomeAssistant, call: ServiceCall) -> None:
+    """Handle update_tariff service call."""
+    installation_id = call.data["installation_id"]
+    payload = {"tariff": call.data["tariff"]}
+    dom = hass.data.get(DOMAIN)
+    if not dom:
+        raise HomeAssistantError("Jullix integration is not loaded")
+    for _entry_id, data in dom.items():
+        if not isinstance(data, dict):
+            continue
+        if installation_id not in (data.get("install_ids") or []):
+            continue
+        api_client = data.get("api_client")
+        if api_client:
+            await api_client.update_tariff(installation_id, payload)
             if coordinator := data.get("coordinator"):
                 await coordinator.async_request_refresh()
             return

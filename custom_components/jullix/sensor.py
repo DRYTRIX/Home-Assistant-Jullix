@@ -15,7 +15,12 @@ from homeassistant.const import UnitOfEnergy, UnitOfPower
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import API_POWER_IN_KW, DOMAIN, OPTION_ENABLE_COST
+from .const import (
+    API_POWER_IN_KW,
+    DOMAIN,
+    OPTION_ENABLE_COST,
+    OPTION_ENABLE_STATISTICS,
+)
 from .coordinator import JullixDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -88,6 +93,7 @@ async def async_setup_entry(
     install_ids: list[str] = data["install_ids"]
     options = entry.options or {}
     enable_cost = options.get(OPTION_ENABLE_COST, False)
+    enable_statistics = options.get(OPTION_ENABLE_STATISTICS, False)
 
     entities: list[JullixSensor] = []
     for install_id in install_ids:
@@ -158,6 +164,47 @@ async def async_setup_entry(
             entities.extend(
                 _create_cost_sensors(coordinator, install_id, install_name, cost)
             )
+            if install_data.get("cost_total") is not None:
+                entities.append(
+                    JullixCostTotalSensor(
+                        coordinator=coordinator,
+                        install_id=install_id,
+                        install_name=install_name,
+                        unique_id=f"{install_id}_cost_total_month",
+                        name=f"{install_name} Cost total this month",
+                    )
+                )
+
+        # Weather alarm sensor
+        if install_data.get("weather_alarm") is not None:
+            entities.append(
+                JullixWeatherAlarmSensor(
+                    coordinator=coordinator,
+                    install_id=install_id,
+                    install_name=install_name,
+                    unique_id=f"{install_id}_weather_alarm",
+                    name=f"{install_name} Weather alarm",
+                )
+            )
+
+        # Statistics sensors (when enabled in options)
+        if enable_statistics:
+            for key, label in (
+                ("statistics_energy_daily", "Energy daily"),
+                ("statistics_energy_monthly", "Energy monthly"),
+                ("statistics_energy_yearly", "Energy yearly"),
+            ):
+                if install_data.get(key) is not None:
+                    entities.append(
+                        JullixStatisticsSensor(
+                            coordinator=coordinator,
+                            install_id=install_id,
+                            install_name=install_name,
+                            data_key=key,
+                            unique_id=f"{install_id}_{key}",
+                            name=f"{install_name} {label}",
+                        )
+                    )
 
         # Tariff sensor
         if install_data.get("tariff") is not None:
@@ -897,4 +944,113 @@ class JullixWeatherForecastSensor(JullixSensor):
             self._attr_native_value = str(weather)
         else:
             self._attr_native_value = None
+        super()._handle_coordinator_update()
+
+
+class JullixCostTotalSensor(JullixSensor):
+    """Sensor for total cost this month (from cost_total)."""
+
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        install_data = self.coordinator.data.get(self._install_id) or {}
+        cost_total = install_data.get("cost_total")
+        if isinstance(cost_total, (int, float)):
+            self._attr_native_value = float(cost_total)
+        elif isinstance(cost_total, dict):
+            self._attr_native_value = _safe_float(
+                cost_total.get("total", cost_total.get("value", cost_total.get("amount")))
+            )
+        else:
+            self._attr_native_value = None
+        super()._handle_coordinator_update()
+
+
+class JullixWeatherAlarmSensor(JullixSensor):
+    """Sensor for weather alarm (active alerts)."""
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        install_data = self.coordinator.data.get(self._install_id) or {}
+        alarm = install_data.get("weather_alarm")
+        if isinstance(alarm, list) and len(alarm) > 0:
+            self._attr_native_value = "on"
+            self._attr_extra_state_attributes = {"alerts": alarm}
+        elif isinstance(alarm, dict) and alarm:
+            self._attr_native_value = "on"
+            self._attr_extra_state_attributes = alarm
+        elif alarm:
+            self._attr_native_value = str(alarm)
+            self._attr_extra_state_attributes = {}
+        else:
+            self._attr_native_value = "off"
+            self._attr_extra_state_attributes = {}
+        super()._handle_coordinator_update()
+
+
+def _extract_statistics_total(value: Any) -> float | None:
+    """Extract total energy from statistics API response (list of entries or dict with total)."""
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, dict):
+        total = value.get("total", value.get("value", value.get("sum")))
+        if total is not None:
+            return _safe_float(total)
+        # Sum over list-like values
+        for key in ("data", "values", "entries"):
+            if key in value and isinstance(value[key], list):
+                total = sum(
+                    _safe_float(x.get("value", x.get("energy", x)) if isinstance(x, dict) else x) or 0
+                    for x in value[key]
+                )
+                return total if total else None
+    if isinstance(value, list):
+        total = sum(
+            _safe_float(x.get("value", x.get("energy", x)) if isinstance(x, dict) else x) or 0
+            for x in value
+        )
+        return total if total else None
+    return None
+
+
+class JullixStatisticsSensor(JullixSensor):
+    """Sensor for energy statistics (daily/monthly/yearly)."""
+
+    _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+    _attr_device_class = SensorDeviceClass.ENERGY
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_suggested_display_precision = 2
+
+    def __init__(
+        self,
+        coordinator: JullixDataUpdateCoordinator,
+        install_id: str,
+        install_name: str,
+        data_key: str,
+        unique_id: str,
+        name: str,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize the statistics sensor."""
+        super().__init__(
+            coordinator=coordinator,
+            install_id=install_id,
+            install_name=install_name,
+            unique_id=unique_id,
+            name=name,
+            **kwargs,
+        )
+        self._data_key = data_key
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        install_data = self.coordinator.data.get(self._install_id) or {}
+        raw = install_data.get(self._data_key)
+        self._attr_native_value = _extract_statistics_total(raw)
         super()._handle_coordinator_update()

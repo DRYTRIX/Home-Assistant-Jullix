@@ -28,6 +28,7 @@ class JullixDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         local_host: str | None = None,
         use_local: bool = False,
         enable_cost: bool = False,
+        enable_statistics: bool = False,
         on_auth_error: Callable[[], Coroutine[Any, Any, None]] | None = None,
     ) -> None:
         """Initialize the coordinator."""
@@ -42,6 +43,7 @@ class JullixDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._local_host = local_host
         self._use_local = use_local and local_host
         self._enable_cost = enable_cost
+        self._enable_statistics = enable_statistics
         self._on_auth_error = on_auth_error
         self.data: dict[str, Any] = {}
         self.last_installation_errors: dict[str, Exception] = {}
@@ -184,8 +186,36 @@ class JullixDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 cost = await self._api_client.get_cost_savings(install_id)
                 if cost:
                     data["cost"] = cost
+                today = date.today()
+                cost_total = await self._api_client.get_cost_total(
+                    install_id, today.year, today.month
+                )
+                if cost_total:
+                    data["cost_total"] = cost_total.get("data", cost_total)
             except Exception as e:
                 _LOGGER.debug("Cost failed for %s: %s", install_id, e)
+
+        # Weather alarm
+        try:
+            weather_alarm = await self._api_client.get_weather_alarm(install_id)
+            if weather_alarm:
+                data["weather_alarm"] = weather_alarm.get("data", weather_alarm)
+        except Exception as e:
+            _LOGGER.debug("Weather alarm failed for %s: %s", install_id, e)
+
+        # Statistics (optional)
+        if self._enable_statistics:
+            try:
+                for key, method in (
+                    ("statistics_energy_daily", self._api_client.get_statistics_energy_daily),
+                    ("statistics_energy_monthly", self._api_client.get_statistics_energy_monthly),
+                    ("statistics_energy_yearly", self._api_client.get_statistics_energy_yearly),
+                ):
+                    raw = await method(install_id)
+                    if raw:
+                        data[key] = raw.get("data", raw)
+            except Exception as e:
+                _LOGGER.debug("Statistics failed for %s: %s", install_id, e)
 
         # Algorithm overview (optimization state)
         try:

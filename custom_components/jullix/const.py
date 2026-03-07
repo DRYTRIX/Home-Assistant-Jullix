@@ -61,6 +61,7 @@ CONF_LOCAL_HOST = "local_host"
 # Options (keys stored in config_entry.options)
 OPTION_SCAN_INTERVAL = "update_interval"
 OPTION_ENABLE_COST = "enable_cost"
+OPTION_ENABLE_STATISTICS = "enable_statistics"
 OPTION_ENABLE_CHARGER_CONTROL = "enable_charger_control"
 OPTION_ENABLE_PLUG_CONTROL = "enable_plug_control"
 OPTION_USE_LOCAL = "use_local"

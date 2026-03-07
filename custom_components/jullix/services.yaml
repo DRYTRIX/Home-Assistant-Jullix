@@ -81,3 +81,20 @@ assign_chargersession:
       required: false
       selector:
         text:
+
+update_tariff:
+  name: Update tariff
+  description: Update the energy tariff for an installation (e.g. single, dual).
+  fields:
+    installation_id:
+      name: Installation ID
+      description: The Jullix installation ID.
+      required: true
+      selector:
+        text:
+    tariff:
+      name: Tariff
+      description: Tariff identifier (e.g. single, dual) as accepted by the Jullix API.
+      required: true
+      selector:
+        text:

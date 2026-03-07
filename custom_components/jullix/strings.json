@@ -58,6 +58,7 @@
         "data": {
           "update_interval": "Update interval (seconds)",
           "enable_cost": "Enable cost & savings sensors",
+          "enable_statistics": "Enable energy statistics sensors",
           "enable_charger_control": "Enable charger control switches",
           "enable_plug_control": "Enable plug control switches",
           "use_local": "Prefer local Jullix-Direct when available"
@@ -65,6 +66,7 @@
         "data_description": {
           "update_interval": "How often to fetch data (30-300 seconds)",
           "enable_cost": "Show cost and savings sensors",
+          "enable_statistics": "Show daily/monthly/yearly energy statistics sensors",
           "enable_charger_control": "Allow controlling chargers from Home Assistant",
           "enable_plug_control": "Allow controlling smart plugs from Home Assistant",
           "use_local": "Use local Jullix for real-time data when configured"
