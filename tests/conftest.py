@@ -77,6 +77,9 @@ def mock_api_client():
         {"id": "mac-plug-1", "name": "Plug 1", "power": 100},
     ])
     client.get_cost_savings = AsyncMock(return_value={})
+    client.get_tariff = AsyncMock(return_value={"data": {"tariff": "single"}})
+    client.get_algorithm_overview = AsyncMock(return_value={"data": {"state": "ok"}})
+    client.get_weather_forecast = AsyncMock(return_value={"data": []})
     client.set_charger_control = AsyncMock(return_value={})
     client.set_plug_control = AsyncMock(return_value={})
     return client
@@ -98,4 +101,7 @@ def sample_install_data():
         ],
         "charger": [],
         "plug": [],
+        "algorithm_overview": {"state": "ok"},
+        "tariff": {"tariff": "single"},
+        "weather_forecast": [],
     }

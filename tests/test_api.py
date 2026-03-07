@@ -137,3 +137,149 @@ async def test_get_charger_control_and_status_paths(client):
         await client.get_charger_status("MAC1")
         req.assert_called_once()
         assert "/charger/MAC1/status" in req.call_args[0][1]
+
+
+@pytest.mark.asyncio
+async def test_get_plugs_returns_list(client):
+    """Test get_plugs normalizes response to list and uses correct path."""
+    with patch.object(client, "_request", new_callable=AsyncMock) as req:
+        req.return_value = [{"id": "plug1", "name": "Plug 1"}]
+        result = await client.get_plugs("inst-1")
+        assert len(result) == 1
+        assert result[0]["id"] == "plug1"
+        req.assert_called_once()
+        assert "/plug/installation/inst-1/all" in req.call_args[0][1]
+    with patch.object(client, "_request", new_callable=AsyncMock) as req:
+        req.return_value = {"plugs": [{"id": "p1"}]}
+        result = await client.get_plugs("inst-1")
+        assert result == [{"id": "p1"}]
+
+
+@pytest.mark.asyncio
+async def test_get_power_summary_path(client):
+    """Test get_power_summary uses correct path."""
+    with patch.object(client, "_request", new_callable=AsyncMock) as req:
+        req.return_value = {"data": {"powers": {"grid": 1.0}}}
+        await client.get_power_summary("inst-42")
+        req.assert_called_once()
+        assert req.call_args[0][0] == "GET"
+        assert "/actual/inst-42/summary/power" in req.call_args[0][1]
+
+
+@pytest.mark.asyncio
+async def test_get_actual_detail_path(client):
+    """Test get_actual_detail uses correct path with detail_type."""
+    with patch.object(client, "_request", new_callable=AsyncMock) as req:
+        req.return_value = {"data": []}
+        await client.get_actual_detail("inst-1", "battery")
+        req.assert_called_once()
+        assert "/actual/inst-1/detail/battery" in req.call_args[0][1]
+        await client.get_actual_detail("inst-1", "solar")
+        assert "/actual/inst-1/detail/solar" in req.call_args[0][1]
+
+
+@pytest.mark.asyncio
+async def test_get_cost_savings_path(client):
+    """Test get_cost_savings uses correct path."""
+    with patch.object(client, "_request", new_callable=AsyncMock) as req:
+        req.return_value = {"data": {}}
+        await client.get_cost_savings("inst-1")
+        req.assert_called_once()
+        assert "/cost/savings/inst-1" in req.call_args[0][1]
+
+
+@pytest.mark.asyncio
+async def test_get_tariff_path(client):
+    """Test get_tariff uses correct path."""
+    with patch.object(client, "_request", new_callable=AsyncMock) as req:
+        req.return_value = {"data": {"tariff": "single"}}
+        await client.get_tariff("inst-1")
+        req.assert_called_once()
+        assert "/tariff/inst-1" in req.call_args[0][1]
+
+
+@pytest.mark.asyncio
+async def test_get_algorithm_overview_path(client):
+    """Test get_algorithm_overview uses correct path."""
+    with patch.object(client, "_request", new_callable=AsyncMock) as req:
+        req.return_value = {"data": {}}
+        await client.get_algorithm_overview("inst-1")
+        req.assert_called_once()
+        assert "/algorithm/overview/inst-1" in req.call_args[0][1]
+
+
+@pytest.mark.asyncio
+async def test_get_weather_forecast_path(client):
+    """Test get_weather_forecast uses correct path."""
+    with patch.object(client, "_request", new_callable=AsyncMock) as req:
+        req.return_value = {"data": []}
+        await client.get_weather_forecast("inst-1")
+        req.assert_called_once()
+        assert "/weather/forecast/inst-1" in req.call_args[0][1]
+
+
+@pytest.mark.asyncio
+async def test_run_algorithm_hourly_path(client):
+    """Test run_algorithm_hourly uses GET and correct path."""
+    with patch.object(client, "_request", new_callable=AsyncMock) as req:
+        req.return_value = {}
+        await client.run_algorithm_hourly("inst-1")
+        req.assert_called_once()
+        assert req.call_args[0][0] == "GET"
+        assert "/algorithm/run-hourly/inst-1" in req.call_args[0][1]
+
+
+@pytest.mark.asyncio
+async def test_assign_chargersession_path_and_payload(client):
+    """Test assign_chargersession uses PUT and forwards payload."""
+    with patch.object(client, "_request", new_callable=AsyncMock) as req:
+        req.return_value = {}
+        payload = {"session_id": "s1", "charger_mac": "mac1", "car_id": "car1"}
+        await client.assign_chargersession(payload)
+        req.assert_called_once()
+        assert req.call_args[0][0] == "PUT"
+        assert "/chargersession/assign" in req.call_args[0][1]
+        assert req.call_args[1]["json"] == payload
+
+
+@pytest.mark.asyncio
+async def test_get_installation_path(client):
+    """Test get_installation uses correct path."""
+    with patch.object(client, "_request", new_callable=AsyncMock) as req:
+        req.return_value = {"id": "inst-1", "name": "Home"}
+        result = await client.get_installation("inst-1")
+        assert result["id"] == "inst-1"
+        req.assert_called_once()
+        assert "/installation/inst-1" in req.call_args[0][1]
+
+
+@pytest.mark.asyncio
+async def test_get_statistics_energy_daily_path(client):
+    """Test get_statistics_energy_daily uses correct path."""
+    with patch.object(client, "_request", new_callable=AsyncMock) as req:
+        req.return_value = {"data": []}
+        await client.get_statistics_energy_daily("inst-1")
+        req.assert_called_once()
+        assert "/statistics/energy/inst-1/daily" in req.call_args[0][1]
+
+
+@pytest.mark.asyncio
+async def test_get_weather_alarm_path(client):
+    """Test get_weather_alarm uses correct path."""
+    with patch.object(client, "_request", new_callable=AsyncMock) as req:
+        req.return_value = {"data": []}
+        await client.get_weather_alarm("inst-1")
+        req.assert_called_once()
+        assert "/weather/alarm/inst-1" in req.call_args[0][1]
+
+
+@pytest.mark.asyncio
+async def test_update_tariff_put_path(client):
+    """Test update_tariff sends PUT with correct path and payload."""
+    with patch.object(client, "_request", new_callable=AsyncMock) as req:
+        req.return_value = {}
+        await client.update_tariff("inst-1", {"tariff": "dual"})
+        req.assert_called_once()
+        assert req.call_args[0][0] == "PUT"
+        assert "/tariff/inst-1" in req.call_args[0][1]
+        assert req.call_args[1]["json"] == {"tariff": "dual"}

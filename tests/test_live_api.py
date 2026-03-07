@@ -75,6 +75,41 @@ async def test_get_actual_detail_charger(api_client, install_id):
 
 
 @pytest.mark.asyncio
+async def test_get_cost_savings(api_client, install_id):
+    """Live API: get_cost_savings returns data (may be empty dict)."""
+    data = await api_client.get_cost_savings(install_id)
+    assert data is not None
+
+
+@pytest.mark.asyncio
+async def test_get_tariff(api_client, install_id):
+    """Live API: get_tariff returns data for the installation."""
+    data = await api_client.get_tariff(install_id)
+    assert data is not None
+
+
+@pytest.mark.asyncio
+async def test_get_algorithm_overview(api_client, install_id):
+    """Live API: get_algorithm_overview returns data."""
+    data = await api_client.get_algorithm_overview(install_id)
+    assert data is not None
+
+
+@pytest.mark.asyncio
+async def test_get_weather_forecast(api_client, install_id):
+    """Live API: get_weather_forecast returns data."""
+    data = await api_client.get_weather_forecast(install_id)
+    assert data is not None
+
+
+@pytest.mark.asyncio
+async def test_get_statistics_energy_daily(api_client, install_id):
+    """Live API: get_statistics_energy_daily returns data."""
+    data = await api_client.get_statistics_energy_daily(install_id)
+    assert data is not None
+
+
+@pytest.mark.asyncio
 async def test_close_session(api_client):
     """Live API: client can close without error."""
     await api_client.close()

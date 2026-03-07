@@ -33,6 +33,9 @@ def sample_install_data():
         ],
         "charger": [],
         "plug": [],
+        "algorithm_overview": {"state": "ok"},
+        "tariff": {"tariff": "single"},
+        "weather_forecast": [],
     }
 
 

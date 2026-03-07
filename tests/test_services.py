@@ -11,6 +11,7 @@ from custom_components.jullix import (
     _handle_assign_chargersession,
     _handle_run_algorithm_hourly,
     _handle_set_charger_control,
+    _handle_update_tariff,
 )
 
 
@@ -32,6 +33,8 @@ def hass_with_jullix():
     }
     hass.data[DOMAIN]["entry-1"]["api_client"] = api
     hass.data[DOMAIN]["entry-1"]["coordinator"] = coord
+    # Ensure api_client has update_tariff for update_tariff service test
+    api.update_tariff = AsyncMock(return_value={})
     return hass
 
 
@@ -120,3 +123,48 @@ async def test_assign_chargersession_calls_api(hass_with_jullix):
     assert payload["session_id"] == "sess-123"
     assert payload["charger_mac"] == "MAC1"
     coord.async_request_refresh.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_assign_chargersession_with_car_id_forwards_payload(hass_with_jullix):
+    """assign_chargersession forwards both charger_mac and car_id when provided."""
+    call = MagicMock()
+    call.data = {
+        "installation_id": "inst-1",
+        "session_id": "sess-456",
+        "charger_mac": "MAC2",
+        "car_id": "car-789",
+    }
+    api = hass_with_jullix.data[DOMAIN]["entry-1"]["api_client"]
+
+    await _handle_assign_chargersession(hass_with_jullix, call)
+
+    api.assign_chargersession.assert_called_once()
+    payload = api.assign_chargersession.call_args[0][0]
+    assert payload["session_id"] == "sess-456"
+    assert payload["charger_mac"] == "MAC2"
+    assert payload["car_id"] == "car-789"
+
+
+@pytest.mark.asyncio
+async def test_update_tariff_calls_api_and_refreshes(hass_with_jullix):
+    """update_tariff finds entry, calls API with payload, refreshes coordinator."""
+    call = MagicMock()
+    call.data = {"installation_id": "inst-1", "tariff": "dual"}
+    api = hass_with_jullix.data[DOMAIN]["entry-1"]["api_client"]
+    coord = hass_with_jullix.data[DOMAIN]["entry-1"]["coordinator"]
+
+    await _handle_update_tariff(hass_with_jullix, call)
+
+    api.update_tariff.assert_called_once_with("inst-1", {"tariff": "dual"})
+    coord.async_request_refresh.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_update_tariff_unknown_installation_raises(hass_with_jullix):
+    """update_tariff raises HomeAssistantError when installation_id not in any entry."""
+    from homeassistant.exceptions import HomeAssistantError
+    call = MagicMock()
+    call.data = {"installation_id": "unknown-install", "tariff": "single"}
+    with pytest.raises(HomeAssistantError, match="No Jullix config entry found"):
+        await _handle_update_tariff(hass_with_jullix, call)

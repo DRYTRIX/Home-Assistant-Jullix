@@ -42,8 +42,7 @@ def _make_flow():
     # HA ConfigFlow.async_show_form and async_create_entry are sync and return a dict
     flow.async_show_form = MagicMock(return_value={"type": "form"})
     flow.async_create_entry = MagicMock(return_value={"type": "create_entry"})
-    flow.async_step_installations = AsyncMock(return_value={"type": "form", "step_id": "installations"})
-    flow.async_step_local = AsyncMock(return_value={"type": "form", "step_id": "local"})
+    # Do not mock async_step_installations or async_step_local so flow logic runs
     return flow
 
 
@@ -110,8 +109,9 @@ async def test_step_user_valid_token_goes_to_installations():
         return_value=installations,
     ):
         result = await flow.async_step_user({CONF_API_TOKEN: "token"})
-    flow.async_step_installations.assert_called_once()
-    assert result == {"type": "form", "step_id": "installations"}
+    assert result["type"] == "form"
+    flow.async_show_form.assert_called_once()
+    assert flow.async_show_form.call_args[1]["step_id"] == "installations"
 
 
 @pytest.mark.asyncio
@@ -133,11 +133,11 @@ async def test_step_installations_with_selection_goes_to_local():
     flow = _make_flow()
     flow._installations = [{"id": "i1", "name": "Inst 1"}]
     flow._api_token = "token"
-    flow.async_step_local = AsyncMock(return_value={"type": "form", "step_id": "local"})
     result = await flow.async_step_installations({CONF_INSTALL_IDS: ["i1"]})
-    flow.async_step_local.assert_called_once()
-    call_args = flow.async_step_local.call_args[0][0]
-    assert call_args == {CONF_API_TOKEN: "token", CONF_INSTALL_IDS: ["i1"]}
+    assert result["type"] == "form"
+    assert flow.async_show_form.call_count >= 1
+    call_kw = flow.async_show_form.call_args[1]
+    assert call_kw["step_id"] == "local"
 
 
 @pytest.mark.asyncio
