@@ -1,0 +1,50 @@
+name: Test
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  unit-tests:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-test.txt
+
+      - name: Run unit tests
+        run: python -m pytest tests/ -v --tb=short
+
+  live-api:
+    name: Live API smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-test.txt
+
+      - name: Run live API smoke test
+        env:
+          JULLIX_API_TOKEN: ${{ secrets.JULLIX_API_TOKEN }}
+          JULLIX_INSTALLATION_ID: ${{ secrets.JULLIX_INSTALLATION_ID }}
+        run: python -m pytest tests/test_live_api.py -v --tb=short
+        # When secrets are not set, tests are skipped (job passes). When set, failures fail the job.
