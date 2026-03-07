@@ -156,9 +156,9 @@ def _create_summary_sensors(
     install_name: str,
     summary: dict[str, Any],
 ) -> list[JullixSensor]:
-    """Create sensors from power summary data."""
+    """Create sensors from power summary data (API: summary.powers and grid.captar_actual)."""
     sensors: list[JullixSensor] = []
-    # Summary can have various structures; common keys: grid, solar, home, battery, captar
+    powers = summary.get("powers", summary) if isinstance(summary, dict) else {}
     for key, label in (
         ("grid", "Grid power"),
         ("solar", "Solar power"),
@@ -166,8 +166,8 @@ def _create_summary_sensors(
         ("battery", "Battery power"),
         ("captar", "Capacity tariff"),
     ):
-        val = _safe_float(summary.get(key))
-        if val is not None or key in ("grid", "solar", "home", "battery"):
+        val = _safe_float(powers.get(key)) if isinstance(powers, dict) else _safe_float(summary.get(key))
+        if val is not None or key in ("grid", "solar", "home", "battery", "captar"):
             sensors.append(
                 JullixPowerSensor(
                     coordinator=coordinator,
@@ -355,8 +355,8 @@ def _create_charger_sensors(
     for i, ch in enumerate(chargers):
         if not isinstance(ch, dict):
             continue
-        mac = ch.get("mac", ch.get("mac_address", str(i)))
-        name = ch.get("name", ch.get("label", f"Charger {i + 1}"))
+        mac = ch.get("id", ch.get("device_id", ch.get("mac", ch.get("mac_address", str(i)))))
+        name = ch.get("name", ch.get("description", ch.get("label", f"Charger {i + 1}")))
         sensors.append(
             JullixChargerSensor(
                 coordinator=coordinator,
@@ -382,8 +382,8 @@ def _create_plug_sensors(
     for i, plug in enumerate(plugs):
         if not isinstance(plug, dict):
             continue
-        mac = plug.get("mac", plug.get("mac_address", str(i)))
-        name = plug.get("name", plug.get("label", f"Plug {i + 1}"))
+        mac = plug.get("id", plug.get("device_id", plug.get("mac", plug.get("mac_address", str(i)))))
+        name = plug.get("name", plug.get("description", plug.get("label", f"Plug {i + 1}")))
         sensors.append(
             JullixPlugSensor(
                 coordinator=coordinator,
@@ -491,8 +491,12 @@ class JullixPowerSensor(JullixSensor):
         """Handle updated data from the coordinator."""
         install_data = self.coordinator.data.get(self._install_id) or {}
         if self._data_source == "summary":
-            data = install_data.get("summary") or {}
-            val = data.get(self._key)
+            summary = install_data.get("summary") or {}
+            powers = summary.get("powers", summary)
+            if self._key == "captar":
+                val = (install_data.get("grid") or {}).get("captar_actual")
+            else:
+                val = powers.get(self._key) if isinstance(powers, dict) else summary.get(self._key)
         elif self._data_source in ("solar", "grid", "home"):
             data = install_data.get(self._data_source) or {}
             val = data.get("power")
@@ -503,7 +507,9 @@ class JullixPowerSensor(JullixSensor):
             else:
                 val = None
         else:
-            val = (install_data.get("summary") or {}).get(self._key)
+            summary = install_data.get("summary") or {}
+            powers = summary.get("powers", summary)
+            val = powers.get(self._key) if isinstance(powers, dict) else summary.get(self._key)
         self._attr_native_value = _extract_power(val) if self._data_source == "summary" or self._key in ("grid", "solar", "home", "battery", "captar") else _safe_float(val)
         super()._handle_coordinator_update()
 
@@ -681,6 +687,10 @@ class JullixChargerSensor(JullixSensor):
             ch = charger_detail[self._charger_index]
             if isinstance(ch, dict):
                 val = ch.get("power", ch.get("current_power"))
+        if val is None and len(chargers) == 1:
+            summary = install_data.get("summary") or {}
+            powers = summary.get("powers") or {}
+            val = powers.get("car")
         self._attr_native_value = _safe_float(val)
         super()._handle_coordinator_update()
 
@@ -730,43 +740,5 @@ class JullixPlugSensor(JullixSensor):
             p = plug_detail[self._plug_index]
             if isinstance(p, dict):
                 val = p.get("power", p.get("current_power"))
-        self._attr_native_value = _safe_float(val)
-        super()._handle_coordinator_update()
-
-
-class JullixCostSensor(JullixSensor):
-    """Sensor for cost and savings values."""
-
-    _attr_state_class = SensorStateClass.MEASUREMENT
-
-    def __init__(
-        self,
-        coordinator: JullixDataUpdateCoordinator,
-        install_id: str,
-        install_name: str,
-        key: str,
-        unique_id: str,
-        name: str,
-        **kwargs: Any,
-    ) -> None:
-        """Initialize the cost sensor."""
-        super().__init__(
-            coordinator=coordinator,
-            install_id=install_id,
-            install_name=install_name,
-            unique_id=unique_id,
-            name=name,
-            **kwargs,
-        )
-        self._key = key
-
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator."""
-        install_data = self.coordinator.data.get(self._install_id) or {}
-        cost = install_data.get("cost") or {}
-        val = cost.get(self._key)
-        if isinstance(val, dict):
-            val = val.get("value", val.get("amount"))
         self._attr_native_value = _safe_float(val)
         super()._handle_coordinator_update()

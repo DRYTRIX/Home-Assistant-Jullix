@@ -44,8 +44,8 @@ async def async_setup_entry(
             for i, ch in enumerate(chargers):
                 if not isinstance(ch, dict):
                     continue
-                mac = ch.get("mac", ch.get("mac_address", str(i)))
-                name = ch.get("name", ch.get("label", f"Charger {i + 1}"))
+                mac = ch.get("id", ch.get("device_id", ch.get("mac", ch.get("mac_address", str(i)))))
+                name = ch.get("name", ch.get("description", ch.get("label", f"Charger {i + 1}")))
                 entities.append(
                     JullixChargerSwitch(
                         coordinator=coordinator,
@@ -64,8 +64,8 @@ async def async_setup_entry(
             for i, plug in enumerate(plugs):
                 if not isinstance(plug, dict):
                     continue
-                mac = plug.get("mac", plug.get("mac_address", str(i)))
-                name = plug.get("name", plug.get("label", f"Plug {i + 1}"))
+                mac = plug.get("id", plug.get("device_id", plug.get("mac", plug.get("mac_address", str(i)))))
+                name = plug.get("name", plug.get("description", plug.get("label", f"Plug {i + 1}")))
                 entities.append(
                     JullixPlugSwitch(
                         coordinator=coordinator,
@@ -232,7 +232,9 @@ class JullixPlugSwitch(JullixSwitch):
 
 
 def _is_enabled(obj: dict[str, Any]) -> bool:
-    """Extract enabled/on state from device dict."""
+    """Extract enabled/on state from device dict (API uses 'active' for chargers)."""
+    if obj.get("active") is True:
+        return True
     if obj.get("enabled") is True:
         return True
     if obj.get("on") is True:
@@ -240,5 +242,7 @@ def _is_enabled(obj: dict[str, Any]) -> bool:
     if obj.get("state", "").lower() in ("on", "charging", "enabled"):
         return True
     if obj.get("status", "").lower() in ("on", "charging", "enabled"):
+        return True
+    if obj.get("plug_state") is True:
         return True
     return False

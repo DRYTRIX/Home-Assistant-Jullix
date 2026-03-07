@@ -80,19 +80,46 @@ class JullixDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Fetch all relevant data for a single installation."""
         data: dict[str, Any] = {}
 
-        # Power summary
+        # Power summary: API returns { "data": { "powers", "extra", ... }, "status": "ok" }
         try:
-            summary = await self._api_client.get_power_summary(install_id)
-            if summary:
-                data["summary"] = summary
+            raw = await self._api_client.get_power_summary(install_id)
+            if raw:
+                data["summary"] = raw.get("data", raw)
         except Exception as e:
             _LOGGER.debug("Power summary failed for %s: %s", install_id, e)
 
-        # Detail endpoints
+        # Detail endpoints: API returns { "data": <array or object>, "status": "ok" }
         for detail_type in ("battery", "solar", "grid", "home", "plug", "charger", "metering"):
             try:
-                detail = await self._api_client.get_actual_detail(install_id, detail_type)
-                if detail:
+                raw = await self._api_client.get_actual_detail(install_id, detail_type)
+                if not raw:
+                    continue
+                detail = raw.get("data", raw)
+                if detail_type == "battery" and isinstance(detail, list):
+                    # Normalize: each item has "battery": { "soc", ... } and root "power"
+                    data["battery"] = [
+                        {
+                            "soc": (item.get("battery") or {}).get("soc"),
+                            "power": item.get("power"),
+                            "name": item.get("name"),
+                            "localid": item.get("localid"),
+                            "id": item.get("id"),
+                        }
+                        for item in detail
+                        if isinstance(item, dict)
+                    ]
+                elif detail_type == "solar" and isinstance(detail, list):
+                    # Use first device; sensor expects dict with power
+                    data["solar"] = detail[0] if detail and isinstance(detail[0], dict) else {}
+                elif detail_type == "grid" and isinstance(detail, dict):
+                    data["grid"] = detail
+                elif detail_type == "home" and isinstance(detail, dict):
+                    data["home"] = detail
+                elif detail_type == "metering" and isinstance(detail, dict):
+                    data["metering"] = detail
+                elif detail_type in ("plug", "charger") and isinstance(detail, list):
+                    data[detail_type] = detail
+                else:
                     data[detail_type] = detail
             except Exception as e:
                 _LOGGER.debug("Detail %s failed for %s: %s", detail_type, install_id, e)
