@@ -140,11 +140,59 @@ async def async_setup_entry(
             _create_plug_sensors(coordinator, install_id, install_name, plugs)
         )
 
+        # Plug energy today (installation-level history)
+        if plugs or install_data.get("plug_energy_today") is not None:
+            entities.append(
+                JullixPlugEnergyTodaySensor(
+                    coordinator=coordinator,
+                    install_id=install_id,
+                    install_name=install_name,
+                    unique_id=f"{install_id}_plug_energy_today",
+                    name=f"{install_name} Plug energy today",
+                )
+            )
+
         # Cost sensors (when enabled in options)
         if enable_cost:
             cost = install_data.get("cost") or {}
             entities.extend(
                 _create_cost_sensors(coordinator, install_id, install_name, cost)
+            )
+
+        # Tariff sensor
+        if install_data.get("tariff") is not None:
+            entities.append(
+                JullixTariffSensor(
+                    coordinator=coordinator,
+                    install_id=install_id,
+                    install_name=install_name,
+                    unique_id=f"{install_id}_tariff",
+                    name=f"{install_name} Tariff",
+                )
+            )
+
+        # Algorithm overview sensor (optimization state)
+        if install_data.get("algorithm_overview") is not None:
+            entities.append(
+                JullixAlgorithmOverviewSensor(
+                    coordinator=coordinator,
+                    install_id=install_id,
+                    install_name=install_name,
+                    unique_id=f"{install_id}_algorithm_overview",
+                    name=f"{install_name} Optimization",
+                )
+            )
+
+        # Weather forecast sensor
+        if install_data.get("weather_forecast") is not None:
+            entities.append(
+                JullixWeatherForecastSensor(
+                    coordinator=coordinator,
+                    install_id=install_id,
+                    install_name=install_name,
+                    unique_id=f"{install_id}_weather_forecast",
+                    name=f"{install_name} Weather",
+                )
             )
 
     async_add_entities(entities)
@@ -402,6 +450,34 @@ def _create_plug_sensors(
             )
         )
     return sensors
+
+
+def _extract_plug_energy_total(value: Any) -> float | None:
+    """Extract total energy (kWh) from plug energy API response."""
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, dict):
+        if "total" in value:
+            return _safe_float(value["total"])
+        if "value" in value:
+            return _safe_float(value["value"])
+        if "energy" in value:
+            return _safe_float(value["energy"])
+        if "data" in value:
+            return _extract_plug_energy_total(value["data"])
+    if isinstance(value, list):
+        total = 0.0
+        for item in value:
+            if isinstance(item, (int, float)):
+                total += float(item)
+            elif isinstance(item, dict):
+                v = item.get("value", item.get("energy", item.get("total")))
+                if v is not None:
+                    total += float(v)
+        return total if total else None
+    return None
 
 
 def _create_cost_sensors(
@@ -753,4 +829,72 @@ class JullixPlugSensor(JullixSensor):
             if isinstance(p, dict):
                 val = p.get("power", p.get("current_power"))
         self._attr_native_value = _extract_power(val)
+        super()._handle_coordinator_update()
+
+
+class JullixPlugEnergyTodaySensor(JullixSensor):
+    """Sensor for installation-level plug energy (today) in kWh."""
+
+    _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+    _attr_device_class = SensorDeviceClass.ENERGY
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_suggested_display_precision = 2
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        install_data = self.coordinator.data.get(self._install_id) or {}
+        raw = install_data.get("plug_energy_today")
+        self._attr_native_value = _extract_plug_energy_total(raw)
+        super()._handle_coordinator_update()
+
+
+class JullixTariffSensor(JullixSensor):
+    """Sensor for active energy tariff."""
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        install_data = self.coordinator.data.get(self._install_id) or {}
+        tariff = install_data.get("tariff")
+        if isinstance(tariff, dict):
+            self._attr_native_value = tariff.get("name", tariff.get("tariff_name", str(tariff)))
+        elif tariff is not None:
+            self._attr_native_value = str(tariff)
+        else:
+            self._attr_native_value = None
+        super()._handle_coordinator_update()
+
+
+class JullixAlgorithmOverviewSensor(JullixSensor):
+    """Sensor for algorithm/optimization overview state."""
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        install_data = self.coordinator.data.get(self._install_id) or {}
+        overview = install_data.get("algorithm_overview")
+        if isinstance(overview, dict):
+            self._attr_native_value = overview.get("status", overview.get("state", str(overview)))
+        elif overview is not None:
+            self._attr_native_value = str(overview)
+        else:
+            self._attr_native_value = None
+        super()._handle_coordinator_update()
+
+
+class JullixWeatherForecastSensor(JullixSensor):
+    """Sensor for weather forecast summary."""
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        install_data = self.coordinator.data.get(self._install_id) or {}
+        weather = install_data.get("weather_forecast")
+        if isinstance(weather, dict):
+            self._attr_native_value = weather.get("condition", weather.get("description", weather.get("summary", str(weather))))
+        elif weather is not None:
+            self._attr_native_value = str(weather)
+        else:
+            self._attr_native_value = None
         super()._handle_coordinator_update()

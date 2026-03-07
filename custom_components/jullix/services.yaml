@@ -1,0 +1,83 @@
+set_charger_control:
+  name: Set charger control
+  description: Set charger control options (enable/disable, mode, max power).
+  fields:
+    installation_id:
+      name: Installation ID
+      description: The Jullix installation ID (from your installation list).
+      required: true
+      selector:
+        text:
+    charger_mac:
+      name: Charger MAC
+      description: The charger device MAC/ID.
+      required: true
+      selector:
+        text:
+    enabled:
+      name: Enabled
+      description: Turn charger on or off.
+      required: false
+      selector:
+        boolean:
+    mode:
+      name: Mode
+      description: Charging mode (eco, turbo, max, block).
+      required: false
+      selector:
+        select:
+          options:
+            - eco
+            - turbo
+            - max
+            - block
+    max_power:
+      name: Max power (kW)
+      description: Maximum charging power in kW (1.4–22).
+      required: false
+      selector:
+        number:
+          min: 1.4
+          max: 22
+          step: 0.2
+          unit_of_measurement: kW
+
+run_algorithm_hourly:
+  name: Run algorithm hourly
+  description: Run the hourly optimization algorithm for an installation.
+  fields:
+    installation_id:
+      name: Installation ID
+      description: The Jullix installation ID.
+      required: true
+      selector:
+        text:
+
+assign_chargersession:
+  name: Assign charge session
+  description: Assign a charge session to a charger or car.
+  fields:
+    installation_id:
+      name: Installation ID
+      description: The Jullix installation ID.
+      required: true
+      selector:
+        text:
+    session_id:
+      name: Session ID
+      description: The charge session ID to assign.
+      required: true
+      selector:
+        text:
+    charger_mac:
+      name: Charger MAC
+      description: Optional charger MAC to assign to.
+      required: false
+      selector:
+        text:
+    car_id:
+      name: Car ID
+      description: Optional car ID to assign to.
+      required: false
+      selector:
+        text:

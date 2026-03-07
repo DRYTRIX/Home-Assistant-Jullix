@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
+from datetime import date, timedelta
 from typing import Any
 
 from homeassistant.core import HomeAssistant
@@ -124,19 +124,41 @@ class JullixDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             except Exception as e:
                 _LOGGER.debug("Detail %s failed for %s: %s", detail_type, install_id, e)
 
-        # Chargers list
+        # Chargers list and per-charger control/status
         try:
             chargers = await self._api_client.get_chargers(install_id)
             if chargers:
                 data["chargers"] = chargers
+                data["charger_control"] = {}
+                for ch in chargers:
+                    if not isinstance(ch, dict):
+                        continue
+                    mac = ch.get("id", ch.get("device_id", ch.get("mac", ch.get("mac_address"))))
+                    if not mac:
+                        continue
+                    try:
+                        ctrl = await self._api_client.get_charger_control(mac)
+                        if ctrl:
+                            data["charger_control"][mac] = ctrl.get("data", ctrl)
+                    except Exception as ce:
+                        _LOGGER.debug("Charger control failed for %s: %s", mac, ce)
         except Exception as e:
             _LOGGER.debug("Chargers failed for %s: %s", install_id, e)
 
-        # Plugs list
+        # Plugs list and installation-level plug energy (today)
         try:
             plugs = await self._api_client.get_plugs(install_id)
             if plugs:
                 data["plugs"] = plugs
+                try:
+                    today = date.today()
+                    plug_energy = await self._api_client.get_history_plug_energy(
+                        install_id, today.year, today.month, today.day
+                    )
+                    if plug_energy:
+                        data["plug_energy_today"] = plug_energy.get("data", plug_energy)
+                except Exception as pe:
+                    _LOGGER.debug("Plug energy history failed for %s: %s", install_id, pe)
         except Exception as e:
             _LOGGER.debug("Plugs failed for %s: %s", install_id, e)
 
@@ -148,6 +170,30 @@ class JullixDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     data["cost"] = cost
             except Exception as e:
                 _LOGGER.debug("Cost failed for %s: %s", install_id, e)
+
+        # Algorithm overview (optimization state)
+        try:
+            overview = await self._api_client.get_algorithm_overview(install_id)
+            if overview:
+                data["algorithm_overview"] = overview.get("data", overview)
+        except Exception as e:
+            _LOGGER.debug("Algorithm overview failed for %s: %s", install_id, e)
+
+        # Tariff
+        try:
+            tariff = await self._api_client.get_tariff(install_id)
+            if tariff:
+                data["tariff"] = tariff.get("data", tariff)
+        except Exception as e:
+            _LOGGER.debug("Tariff failed for %s: %s", install_id, e)
+
+        # Weather forecast
+        try:
+            weather = await self._api_client.get_weather_forecast(install_id)
+            if weather:
+                data["weather_forecast"] = weather.get("data", weather)
+        except Exception as e:
+            _LOGGER.debug("Weather forecast failed for %s: %s", install_id, e)
 
         return data
 

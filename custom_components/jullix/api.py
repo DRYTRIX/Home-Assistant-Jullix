@@ -11,18 +11,40 @@ from .const import (
     API_BASE_URL,
     API_PATH_ACTUAL_DETAIL,
     API_PATH_ACTUAL_METERING,
+    API_PATH_ALGORITHM_FORCE,
+    API_PATH_ALGORITHM_OPTI,
+    API_PATH_ALGORITHM_OVERVIEW,
+    API_PATH_ALGORITHM_PVPREDICT,
+    API_PATH_ALGORITHM_RESULTS,
+    API_PATH_ALGORITHM_RUN_HOURLY,
+    API_PATH_ALGORITHM_SETTINGS,
+    API_PATH_ALGORITHM_USAGE,
+    API_PATH_CAR_BLOCK,
     API_PATH_CHARGER_CONTROL,
+    API_PATH_CHARGER_ENERGIES,
+    API_PATH_CHARGER_EVENTS,
     API_PATH_CHARGER_STATUS,
     API_PATH_CHARGERS,
+    API_PATH_CHARGERSESSION_ASSIGN,
+    API_PATH_CHARGERSESSION_INSTALLATION,
+    API_PATH_COST_HOURLY_PRICE,
     API_PATH_COST_SAVINGS,
     API_PATH_COST_TOTAL,
+    API_PATH_HISTORY_PLUG_ENERGY,
+    API_PATH_HISTORY_PLUG_POWER,
     API_PATH_INSTALLATION,
     API_PATH_INSTALLATIONS,
     API_PATH_PLUG_CONTROL,
+    API_PATH_PLUG_ENERGY,
+    API_PATH_PLUG_POWER,
     API_PATH_PLUGS,
     API_PATH_POWER_SUMMARY,
-    API_PATH_ALGORITHM_FORCE,
-    API_PATH_ALGORITHM_SETTINGS,
+    API_PATH_STATISTICS_ENERGY_DAILY,
+    API_PATH_STATISTICS_ENERGY_MONTHLY,
+    API_PATH_STATISTICS_ENERGY_YEARLY,
+    API_PATH_TARIFF,
+    API_PATH_WEATHER_ALARM,
+    API_PATH_WEATHER_FORECAST,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -168,6 +190,38 @@ class JullixApiClient:
         path = API_PATH_PLUG_CONTROL.format(mac=mac)
         return await self._request("PUT", path, json=payload)
 
+    async def get_plug_energy(
+        self, mac: str, year: int, month: int, day: int
+    ) -> dict[str, Any]:
+        """Fetch plug energy for a specific day."""
+        path = API_PATH_PLUG_ENERGY.format(mac=mac, year=year, month=month, day=day)
+        return await self._request("GET", path)
+
+    async def get_plug_power(
+        self, mac: str, year: int, month: int, day: int
+    ) -> dict[str, Any]:
+        """Fetch plug power data for a specific day."""
+        path = API_PATH_PLUG_POWER.format(mac=mac, year=year, month=month, day=day)
+        return await self._request("GET", path)
+
+    async def get_history_plug_energy(
+        self, install_id: str, year: int, month: int, day: int
+    ) -> dict[str, Any]:
+        """Fetch installation-level plug energy history for a day."""
+        path = API_PATH_HISTORY_PLUG_ENERGY.format(
+            install_id=install_id, year=year, month=month, day=day
+        )
+        return await self._request("GET", path)
+
+    async def get_history_plug_power(
+        self, install_id: str, year: int, month: int, day: int
+    ) -> dict[str, Any]:
+        """Fetch installation-level plug power history for a day."""
+        path = API_PATH_HISTORY_PLUG_POWER.format(
+            install_id=install_id, year=year, month=month, day=day
+        )
+        return await self._request("GET", path)
+
     async def get_cost_savings(self, install_id: str) -> dict[str, Any]:
         """Fetch savings data for an installation."""
         path = API_PATH_COST_SAVINGS.format(install_id=install_id)
@@ -193,3 +247,117 @@ class JullixApiClient:
         """Force a command on the installation's gateway."""
         path = API_PATH_ALGORITHM_FORCE.format(install_id=install_id)
         return await self._request("POST", path, json=payload)
+
+    async def get_algorithm_opti(self, install_id: str) -> dict[str, Any]:
+        """Retrieve optimized model data for an installation."""
+        path = API_PATH_ALGORITHM_OPTI.format(install_id=install_id)
+        return await self._request("GET", path)
+
+    async def get_algorithm_overview(self, install_id: str) -> dict[str, Any]:
+        """Get optimization overview for an installation."""
+        path = API_PATH_ALGORITHM_OVERVIEW.format(install_id=install_id)
+        return await self._request("GET", path)
+
+    async def get_algorithm_results(self, install_id: str) -> dict[str, Any]:
+        """Retrieve optimization results for an installation."""
+        path = API_PATH_ALGORITHM_RESULTS.format(install_id=install_id)
+        return await self._request("GET", path)
+
+    async def get_algorithm_usage(self, install_id: str) -> dict[str, Any]:
+        """Get usage model for an installation."""
+        path = API_PATH_ALGORITHM_USAGE.format(install_id=install_id)
+        return await self._request("GET", path)
+
+    async def get_algorithm_pvpredict(self, install_id: str) -> dict[str, Any]:
+        """Get solar prediction for an installation."""
+        path = API_PATH_ALGORITHM_PVPREDICT.format(install_id=install_id)
+        return await self._request("GET", path)
+
+    async def run_algorithm_hourly(self, install_id: str) -> dict[str, Any]:
+        """Run the hourly optimization algorithm."""
+        path = API_PATH_ALGORITHM_RUN_HOURLY.format(install_id=install_id)
+        return await self._request("GET", path)
+
+    async def get_cost_hourly_price(
+        self, install_id: str, year: int, month: int, day: int
+    ) -> dict[str, Any]:
+        """Get hourly price for a day."""
+        path = API_PATH_COST_HOURLY_PRICE.format(
+            install_id=install_id, year=year, month=month, day=day
+        )
+        return await self._request("GET", path)
+
+    async def get_chargersession_installation(
+        self, install_id: str
+    ) -> dict[str, Any]:
+        """Get charge sessions for an installation."""
+        path = API_PATH_CHARGERSESSION_INSTALLATION.format(install_id=install_id)
+        return await self._request("GET", path)
+
+    async def get_car_block(self, car_id: str) -> dict[str, Any]:
+        """Get block charging estimate for a car."""
+        path = API_PATH_CAR_BLOCK.format(car_id=car_id)
+        return await self._request("GET", path)
+
+    async def get_tariff(self, install_id: str) -> dict[str, Any]:
+        """Get active energy tariff for an installation."""
+        path = API_PATH_TARIFF.format(install_id=install_id)
+        return await self._request("GET", path)
+
+    async def update_tariff(
+        self, install_id: str, payload: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Update tariff for an installation."""
+        path = API_PATH_TARIFF.format(install_id=install_id)
+        return await self._request("PUT", path, json=payload)
+
+    async def assign_chargersession(
+        self, payload: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Assign a charge session."""
+        return await self._request("PUT", API_PATH_CHARGERSESSION_ASSIGN, json=payload)
+
+    async def get_weather_forecast(self, install_id: str) -> dict[str, Any]:
+        """Get weather forecast for an installation."""
+        path = API_PATH_WEATHER_FORECAST.format(install_id=install_id)
+        return await self._request("GET", path)
+
+    async def get_weather_alarm(self, install_id: str) -> dict[str, Any]:
+        """Get current weather alerts for an installation."""
+        path = API_PATH_WEATHER_ALARM.format(install_id=install_id)
+        return await self._request("GET", path)
+
+    async def get_statistics_energy_daily(
+        self, install_id: str
+    ) -> dict[str, Any]:
+        """Get daily energy statistics."""
+        path = API_PATH_STATISTICS_ENERGY_DAILY.format(install_id=install_id)
+        return await self._request("GET", path)
+
+    async def get_statistics_energy_monthly(
+        self, install_id: str
+    ) -> dict[str, Any]:
+        """Get monthly energy statistics."""
+        path = API_PATH_STATISTICS_ENERGY_MONTHLY.format(install_id=install_id)
+        return await self._request("GET", path)
+
+    async def get_statistics_energy_yearly(
+        self, install_id: str
+    ) -> dict[str, Any]:
+        """Get yearly energy statistics."""
+        path = API_PATH_STATISTICS_ENERGY_YEARLY.format(install_id=install_id)
+        return await self._request("GET", path)
+
+    async def get_charger_energies(
+        self, mac: str, year: int, month: int, day: int
+    ) -> dict[str, Any]:
+        """Retrieve energy data for a charger for a day."""
+        path = API_PATH_CHARGER_ENERGIES.format(
+            mac=mac, year=year, month=month, day=day
+        )
+        return await self._request("GET", path)
+
+    async def get_charger_events(self, mac: str) -> dict[str, Any]:
+        """Retrieve events for a charger."""
+        path = API_PATH_CHARGER_EVENTS.format(mac=mac)
+        return await self._request("GET", path)
