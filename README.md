@@ -172,6 +172,7 @@ The repo includes a pytest test suite and GitHub Actions workflow:
 
 ## Changelog
 
+- **1.6.1** – Tests: fix coordinator mock so all API methods are AsyncMocks (fixes “object MagicMock can't be used in 'await' expression” in CI).
 - **1.6.0** – New: energy statistics sensors (daily/monthly/yearly, optional); weather alarm sensor; cost total this month (when cost enabled); `jullix.update_tariff` service; option “Enable energy statistics sensors”. Extended API client and coordinator tests; config flow test fixes; live API smoke tests for cost, tariff, algorithm, weather, statistics.
 - **1.5.2** – Docs: fix screenshot references (remove deleted energy-placeholder; README and info.md use existing screenshots only).
 - **1.5.1** – Hassfest: remove invalid `icon` key from manifest; README: add repository setup (HACS description/topics) section.

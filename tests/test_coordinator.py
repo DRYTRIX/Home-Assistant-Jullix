@@ -66,26 +66,35 @@ def mock_hass():
     return MagicMock()
 
 
+def _async_return(value=None):
+    """Helper: return an AsyncMock that resolves to value."""
+    return AsyncMock(return_value=value)
+
+
+class _MockApiClientForFetch:
+    """Fake API client where every method is an AsyncMock (no MagicMock to await)."""
+
+    get_power_summary = _async_return({"data": {"powers": {"grid": 0.5}}})
+    get_actual_detail = _async_return({"data": []})
+    get_chargers = _async_return([])
+    get_charger_control = _async_return({"data": {"config": {"mode": "eco", "max_power": 11.0}}})
+    get_plugs = _async_return([])
+    get_history_plug_energy = _async_return({})
+    get_cost_savings = _async_return({"savings": 10})
+    get_cost_total = _async_return({"data": {"total": 50.0}})
+    get_weather_alarm = _async_return({"data": []})
+    get_statistics_energy_daily = _async_return({"data": []})
+    get_statistics_energy_monthly = _async_return({"data": []})
+    get_statistics_energy_yearly = _async_return({"data": []})
+    get_algorithm_overview = _async_return({"data": {"state": "ok"}})
+    get_tariff = _async_return({"data": {"tariff": "single"}})
+    get_weather_forecast = _async_return({"data": []})
+
+
 @pytest.fixture
 def mock_api_for_fetch():
-    """API client mock that returns valid data for _fetch_installation_data."""
-    client = MagicMock()
-    client.get_power_summary = AsyncMock(return_value={"data": {"powers": {"grid": 0.5}}})
-    client.get_actual_detail = AsyncMock(
-        return_value={"data": []}
-    )  # empty for most; battery/solar etc. can be list/dict
-    client.get_chargers = AsyncMock(return_value=[])
-    client.get_plugs = AsyncMock(return_value=[])
-    client.get_cost_savings = AsyncMock(return_value={"savings": 10})
-    client.get_cost_total = AsyncMock(return_value={"data": {"total": 50.0}})
-    client.get_weather_alarm = AsyncMock(return_value={"data": []})
-    client.get_statistics_energy_daily = AsyncMock(return_value={"data": []})
-    client.get_statistics_energy_monthly = AsyncMock(return_value={"data": []})
-    client.get_statistics_energy_yearly = AsyncMock(return_value={"data": []})
-    client.get_algorithm_overview = AsyncMock(return_value={"data": {"state": "ok"}})
-    client.get_tariff = AsyncMock(return_value={"data": {"tariff": "single"}})
-    client.get_weather_forecast = AsyncMock(return_value={"data": []})
-    return client
+    """API client mock for _fetch_installation_data. All methods are AsyncMocks."""
+    return _MockApiClientForFetch()
 
 
 @pytest.mark.asyncio
