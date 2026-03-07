@@ -39,8 +39,9 @@ def _make_flow():
     flow._installations = []
     flow._api_token = None
     flow._config = {}
-    flow.async_show_form = AsyncMock(return_value={"type": "form"})
-    flow.async_create_entry = AsyncMock(return_value={"type": "create_entry"})
+    # HA ConfigFlow.async_show_form and async_create_entry are sync and return a dict
+    flow.async_show_form = MagicMock(return_value={"type": "form"})
+    flow.async_create_entry = MagicMock(return_value={"type": "create_entry"})
     flow.async_step_installations = AsyncMock(return_value={"type": "form", "step_id": "installations"})
     flow.async_step_local = AsyncMock(return_value={"type": "form", "step_id": "local"})
     return flow
@@ -118,7 +119,7 @@ async def test_step_installations_no_input_shows_form():
     """async_step_installations with no input shows installations form."""
     flow = _make_flow()
     flow._installations = [{"id": "i1", "name": "Inst 1"}]
-    flow.async_show_form = AsyncMock(return_value={"type": "form"})
+    flow.async_show_form = MagicMock(return_value={"type": "form"})
     result = await flow.async_step_installations(None)
     flow.async_show_form.assert_called_once()
     call_kw = flow.async_show_form.call_args[1]
@@ -144,7 +145,7 @@ async def test_step_local_skip_creates_entry():
     """async_step_local with empty local host creates entry without local."""
     flow = _make_flow()
     flow._config = {CONF_API_TOKEN: "token", CONF_INSTALL_IDS: ["i1"]}
-    flow.async_create_entry = AsyncMock(return_value={"type": "create_entry"})
+    flow.async_create_entry = MagicMock(return_value={"type": "create_entry"})
     await flow.async_step_local({CONF_LOCAL_HOST: ""})
     flow.async_create_entry.assert_called_once()
     call_args = flow.async_create_entry.call_args[1]
@@ -158,9 +159,9 @@ async def test_step_local_connection_failed_shows_error():
     """async_step_local when local test_connection fails shows local_connection_failed."""
     flow = _make_flow()
     flow._config = {CONF_API_TOKEN: "token", CONF_INSTALL_IDS: ["i1"]}
-    flow.async_show_form = AsyncMock(return_value={"type": "form"})
+    flow.async_show_form = MagicMock(return_value={"type": "form"})
     with patch(
-        "custom_components.jullix.config_flow.JullixLocalClient",
+        "custom_components.jullix.local_client.JullixLocalClient",
     ) as mock_local_class:
         mock_client = MagicMock()
         mock_client.test_connection = AsyncMock(side_effect=ConnectionError("refused"))
@@ -176,9 +177,9 @@ async def test_step_local_connection_ok_creates_entry_with_local():
     """async_step_local when local test_connection succeeds creates entry with use_local."""
     flow = _make_flow()
     flow._config = {CONF_API_TOKEN: "token", CONF_INSTALL_IDS: ["i1"]}
-    flow.async_create_entry = AsyncMock(return_value={"type": "create_entry"})
+    flow.async_create_entry = MagicMock(return_value={"type": "create_entry"})
     with patch(
-        "custom_components.jullix.config_flow.JullixLocalClient",
+        "custom_components.jullix.local_client.JullixLocalClient",
     ) as mock_local_class:
         mock_client = MagicMock()
         mock_client.test_connection = AsyncMock(return_value=True)
@@ -202,10 +203,10 @@ async def test_options_flow_init_shows_form():
         OPTION_USE_LOCAL: True,
     }
     handler = JullixOptionsFlowHandler.__new__(JullixOptionsFlowHandler)
-    handler.config_entry = config_entry
+    object.__setattr__(handler, "config_entry", config_entry)
     handler.hass = MagicMock()
-    handler.async_show_form = AsyncMock(return_value={"type": "form"})
-    handler.async_create_entry = AsyncMock(return_value={"type": "create_entry"})
+    handler.async_show_form = MagicMock(return_value={"type": "form"})
+    handler.async_create_entry = MagicMock(return_value={"type": "create_entry"})
     result = await handler.async_step_init(None)
     handler.async_show_form.assert_called_once()
     call_kw = handler.async_show_form.call_args[1]
@@ -219,9 +220,9 @@ async def test_options_flow_submit_creates_entry():
     config_entry = MagicMock()
     config_entry.options = {}
     handler = JullixOptionsFlowHandler.__new__(JullixOptionsFlowHandler)
-    handler.config_entry = config_entry
+    object.__setattr__(handler, "config_entry", config_entry)
     handler.hass = MagicMock()
-    handler.async_create_entry = AsyncMock(return_value={"type": "create_entry"})
+    handler.async_create_entry = MagicMock(return_value={"type": "create_entry"})
     user_input = {
         OPTION_SCAN_INTERVAL: 120,
         OPTION_ENABLE_COST: False,

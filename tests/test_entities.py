@@ -92,8 +92,9 @@ async def test_switch_setup_creates_entities(hass_and_entry):
 
     assert len(added) > 0
     unique_ids = [getattr(e, "unique_id", None) for e in added]
-    assert any(uid == "inst-1_charger_mac-1_switch" for uid in unique_ids)
-    assert any(uid == "inst-1_plug_plug-mac-1_switch" for uid in unique_ids)
+    # Switch entities use DOMAIN-prefixed unique_id (e.g. jullix_inst-1_charger_mac-1_switch)
+    assert any(uid and "inst-1_charger_mac-1_switch" in uid for uid in unique_ids)
+    assert any(uid and "inst-1_plug_plug-mac-1_switch" in uid for uid in unique_ids)
 
 
 @pytest.mark.asyncio

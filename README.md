@@ -166,6 +166,12 @@ The repo includes a pytest test suite and GitHub Actions workflow:
 
 ---
 
+## Changelog
+
+- **1.4.0** – API client: use `ThreadedResolver` for aiohttp (improved DNS compatibility); HACS brand icon; test updates.
+
+---
+
 ## Support
 
 - [GitHub Issues](https://github.com/dries/HACS-Jullix/issues)

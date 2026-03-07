@@ -86,8 +86,8 @@ class JullixApiClient:
     ) -> Any:
         """Perform an API request."""
         if self._session is None:
-            # Use DefaultResolver to avoid aiodns compatibility issues in CI (e.g. getaddrinfo signature)
-            connector = aiohttp.TCPConnector(resolver=aiohttp.resolver.DefaultResolver())
+            # Use ThreadedResolver to avoid aiodns compatibility issues (e.g. Channel.getaddrinfo signature)
+            connector = aiohttp.TCPConnector(resolver=aiohttp.resolver.ThreadedResolver())
             self._session = aiohttp.ClientSession(connector=connector)
 
         url = f"{API_BASE_URL}{path}"
