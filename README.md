@@ -168,8 +168,20 @@ The repo includes a pytest test suite and GitHub Actions workflow:
 
 ## Changelog
 
+- **1.5.1** – Hassfest: remove invalid `icon` key from manifest; README: add repository setup (HACS description/topics) section.
 - **1.5.0** – CI: use `requirements-test-ci.txt` for faster unit tests (config flow/entity tests skipped in CI); hassfest validation workflow; config flow test fix (options flow handler); REPO_SETUP.md and docs updates.
 - **1.4.0** – API client: use `ThreadedResolver` for aiohttp (improved DNS compatibility); HACS brand icon; test updates.
+
+---
+
+## Repository setup (HACS validation)
+
+For HACS validation to pass, set on the GitHub repository:
+
+- **Description**: e.g. "Jullix integration for Home Assistant" (repo **About** or **Settings**).
+- **Topics**: e.g. `home-assistant`, `hacs`, `integration`, `jullix` (gear icon next to **About**).
+
+See [HACS publish docs](https://hacs.xyz/docs/publish/include#check-repository).
 
 ---
 
