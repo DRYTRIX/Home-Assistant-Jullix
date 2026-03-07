@@ -1,17 +1,43 @@
 # Jullix Home Assistant Integration
 
-A complete HACS integration for [Jullix](https://wiki.jullix.be/) (Innovoltus Energy Management System), bringing solar, battery, grid, chargers, and smart plugs into Home Assistant.
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
+[![HA 2024.1+](https://img.shields.io/badge/Home%20Assistant-2024.1%2B-blue.svg)](https://www.home-assistant.io/)
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support-yellow.svg)](https://buymeacoffee.com/drytrix)
+
+A complete HACS integration for [Jullix](https://wiki.jullix.be/) (Innovoltus Energy Management System), bringing solar, battery, grid, EV chargers, and smart plugs into Home Assistant.
+
+---
+
+## What is Jullix?
+
+[Jullix](https://wiki.jullix.be/) is an energy management system by Innovoltus that helps you monitor and optimize your home's energy flow—solar production, battery storage, grid import/export, and consumption. The [Mijn Jullix](https://mijn.jullix.be) portal provides real-time data and control via its Platform API.
+
+## What This Integration Does
+
+This integration connects Home Assistant to your Jullix installation via the cloud API (and optionally via local Jullix-Direct). You get sensors for power, energy, battery SoC, charger and plug status, plus optional switches to control chargers and plugs—all ready for dashboards, automations, and the Energy dashboard.
+
+---
 
 ## Features
+
+### Power & Energy
 
 - **Real-time power data**: Grid, solar, home consumption, battery charge/discharge, capacity tariff (captar)
 - **Battery monitoring**: State of charge (SoC), power per battery
 - **Solar production**: Per-string and aggregate power
 - **Metering**: Electricity import/export, gas consumption
+
+### Devices
+
 - **EV chargers**: Power and status per charger; optional on/off control
 - **Smart plugs**: Power per plug; optional on/off control
+
+### Extras
+
 - **Cost & savings**: Optional cost and savings sensors (when enabled in options)
 - **Jullix-Direct**: Optional local connection for real-time data without internet
+
+---
 
 ## Installation
 
@@ -27,6 +53,8 @@ A complete HACS integration for [Jullix](https://wiki.jullix.be/) (Innovoltus En
 1. Copy the `custom_components/jullix` folder into your Home Assistant `custom_components` directory
 2. Restart Home Assistant
 3. Add the integration via **Settings** → **Devices & services**
+
+---
 
 ## Configuration
 
@@ -53,15 +81,29 @@ After setup, click **Configure** on the Jullix integration to adjust:
 - **Enable plug control**: Allow turning smart plugs on/off
 - **Prefer local Jullix-Direct**: Use local device for real-time data when configured
 
-## Dashboard Suggestions
+---
 
-Use standard Home Assistant cards:
+## Dashboard & Usage
 
-- **Energy dashboard**: Add Jullix power sensors (grid, solar, home, battery) to the Energy dashboard
-- **Entity cards**: Group sensors by installation
-- **History graph**: Use `sensor.jullix_*` entities for power history
+### Energy Dashboard
 
-Example Lovelace card for power overview:
+Add Jullix power sensors (grid, solar, home, battery) to the [Energy dashboard](https://www.home-assistant.io/docs/energy/) for a complete view of your energy flow.
+
+### Power Units
+
+Power values are stored in **Watts (W)** for full Home Assistant compatibility (Energy dashboard, history, templates). The UI may display large values as kW depending on your locale. For a custom "X,XX kW" display, you can use a template sensor:
+
+```yaml
+template:
+  - sensor:
+      - name: "Jullix Solar Power kW"
+        unique_id: jullix_solar_power_kw
+        unit_of_measurement: "kW"
+        state: "{{ (states('sensor.jullix_xxx_summary_solar') | float / 1000) | round(2) }}"
+        device_class: power
+```
+
+### Example Lovelace Card
 
 ```yaml
 type: entities
@@ -73,17 +115,39 @@ entities:
   - entity: sensor.jullix_xxx_summary_battery
 ```
 
+Replace `xxx` with your installation ID.
+
+---
+
+## Screenshots
+
+*Replace with real screenshots when available.*
+
+| Dashboard overview | Energy dashboard |
+|--------------------|------------------|
+| ![Dashboard placeholder](docs/screenshots/dashboard-placeholder.png) | ![Energy placeholder](docs/screenshots/energy-placeholder.png) |
+
+| Integration configuration |
+|----------------------------|
+| ![Config placeholder](docs/screenshots/config-placeholder.png) |
+
+---
+
 ## Documentation
 
 - [Jullix Wiki](https://wiki.jullix.be/doku.php?id=nl:start)
 - [Integration FAQ](https://wiki.jullix.be/doku.php?id=nl:faq:integratie)
 - [Platform API](https://mijn.jullix.be/apidocs/)
 
+---
+
 ## Requirements
 
 - Home Assistant 2024.1 or newer
 - Jullix account with API token
 - Internet connection (or local Jullix-Direct for real-time data)
+
+---
 
 ## Support
 

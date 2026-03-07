@@ -1,6 +1,7 @@
 {
   "domain": "jullix",
   "name": "Jullix",
+  "icon": "icon.png",
   "codeowners": ["@dries"],
   "config_flow": true,
   "documentation": "https://github.com/dries/HACS-Jullix",
@@ -8,5 +9,5 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/dries/HACS-Jullix/issues",
   "requirements": ["aiohttp>=3.8.0"],
-  "version": "1.0.1"
+  "version": "1.1.0"
 }

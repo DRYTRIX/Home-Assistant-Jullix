@@ -15,7 +15,7 @@ from homeassistant.const import UnitOfEnergy, UnitOfPower
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, OPTION_ENABLE_COST
+from .const import API_POWER_IN_KW, DOMAIN, OPTION_ENABLE_COST
 from .coordinator import JullixDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -50,22 +50,28 @@ def _safe_int(value: Any, default: int | None = None) -> int | None:
 
 
 def _extract_power(value: Any) -> float | None:
-    """Extract power (W) from API value - handles flat number or nested dict."""
+    """Extract power (W) from API value - handles flat number or nested dict.
+    Converts from kW to W when API_POWER_IN_KW is True for HA compatibility."""
     if value is None:
         return None
+    raw: float | None = None
     if isinstance(value, (int, float)):
-        return float(value)
-    if isinstance(value, dict):
+        raw = float(value)
+    elif isinstance(value, dict):
         if "power" in value:
-            return _safe_float(value["power"])
-        if "value" in value:
-            return _safe_float(value["value"])
-        # Grid may have import/export
-        imp = _safe_float(value.get("import"))
-        exp = _safe_float(value.get("export"))
-        if imp is not None or exp is not None:
-            return (imp or 0) - (exp or 0)
-    return None
+            raw = _safe_float(value["power"])
+        elif "value" in value:
+            raw = _safe_float(value["value"])
+        else:
+            imp = _safe_float(value.get("import"))
+            exp = _safe_float(value.get("export"))
+            if imp is not None or exp is not None:
+                raw = (imp or 0) - (exp or 0)
+    if raw is None:
+        return None
+    if API_POWER_IN_KW:
+        return raw * 1000.0
+    return raw
 
 
 async def async_setup_entry(
@@ -460,6 +466,7 @@ class JullixPowerSensor(JullixSensor):
     _attr_native_unit_of_measurement = UnitOfPower.WATT
     _attr_device_class = SensorDeviceClass.POWER
     _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 2
 
     def __init__(
         self,
@@ -510,7 +517,10 @@ class JullixPowerSensor(JullixSensor):
             summary = install_data.get("summary") or {}
             powers = summary.get("powers", summary)
             val = powers.get(self._key) if isinstance(powers, dict) else summary.get(self._key)
-        self._attr_native_value = _extract_power(val) if self._data_source == "summary" or self._key in ("grid", "solar", "home", "battery", "captar") else _safe_float(val)
+        if self._data_source == "summary" or self._key in ("grid", "solar", "home", "battery", "captar"):
+            self._attr_native_value = _extract_power(val)
+        else:
+            self._attr_native_value = _extract_power(val) if val is not None else None
         super()._handle_coordinator_update()
 
 
@@ -648,6 +658,7 @@ class JullixChargerSensor(JullixSensor):
     _attr_native_unit_of_measurement = UnitOfPower.WATT
     _attr_device_class = SensorDeviceClass.POWER
     _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 2
 
     def __init__(
         self,
@@ -691,7 +702,7 @@ class JullixChargerSensor(JullixSensor):
             summary = install_data.get("summary") or {}
             powers = summary.get("powers") or {}
             val = powers.get("car")
-        self._attr_native_value = _safe_float(val)
+        self._attr_native_value = _extract_power(val)
         super()._handle_coordinator_update()
 
 
@@ -701,6 +712,7 @@ class JullixPlugSensor(JullixSensor):
     _attr_native_unit_of_measurement = UnitOfPower.WATT
     _attr_device_class = SensorDeviceClass.POWER
     _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 2
 
     def __init__(
         self,
@@ -740,5 +752,5 @@ class JullixPlugSensor(JullixSensor):
             p = plug_detail[self._plug_index]
             if isinstance(p, dict):
                 val = p.get("power", p.get("current_power"))
-        self._attr_native_value = _safe_float(val)
+        self._attr_native_value = _extract_power(val)
         super()._handle_coordinator_update()

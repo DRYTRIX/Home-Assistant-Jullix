@@ -19,6 +19,9 @@ API_PATH_COST_TOTAL = "/api/v1/cost/total/{install_id}/{year}/{month}"
 API_PATH_ALGORITHM_SETTINGS = "/api/v1/algorithm/settings/{install_id}"
 API_PATH_ALGORITHM_FORCE = "/api/v1/algorithm/force/command/{install_id}"
 
+# API returns power in kW; we convert to W for Home Assistant compatibility
+API_POWER_IN_KW = True
+
 # Jullix-Direct (local)
 LOCAL_EMS_ENDPOINTS = ["meter", "solar", "battery", "charger", "plug"]
 LOCAL_DEFAULT_HOST = "jullix.local"
