@@ -9,9 +9,10 @@ Integration for the [Jullix](https://wiki.jullix.be/) Energy Management System (
 - **Real-time power**: Grid, solar, home consumption, battery, capacity tariff (captar)
 - **Battery**: State of charge (SoC) and power per battery
 - **Metering**: Electricity import/export, gas consumption
-- **EV chargers**: Status and power; optional on/off control
-- **Smart plugs**: Power monitoring; optional on/off control
+- **EV chargers**: Status and power; full control (switch, max power number, mode select, optional service)
+- **Smart plugs**: Power and plug energy today; on/off control
 - **Cost & savings**: Optional cost and savings sensors
+- **Algorithm, tariff, weather**: Optimization overview, tariff, and weather forecast sensors; services for run-hourly and assign charge session
 - **Jullix-Direct**: Local real-time data without internet
 
 ## Installation

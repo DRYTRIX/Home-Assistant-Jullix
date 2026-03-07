@@ -29,13 +29,15 @@ This integration connects Home Assistant to your Jullix installation via the clo
 
 ### Devices
 
-- **EV chargers**: Power and status per charger; optional on/off control
-- **Smart plugs**: Power per plug; optional on/off control
+- **EV chargers**: Power and status per charger; **full control** via switch (on/off), number (max power kW), and select (mode: eco, turbo, max, block). Optional custom service `jullix.set_charger_control` for advanced control.
+- **Smart plugs**: Power per plug; on/off control via switch. Installation-level **plug energy today** sensor from history API.
 
 ### Extras
 
 - **Cost & savings**: Optional cost and savings sensors (when enabled in options)
 - **Jullix-Direct**: Optional local connection for real-time data without internet
+- **Algorithm & optimization**: Sensors for optimization overview; service `jullix.run_algorithm_hourly` to trigger hourly optimization
+- **Tariff & weather**: Tariff and weather forecast sensors; charge session assignment via `jullix.assign_chargersession`
 
 ---
 
@@ -77,9 +79,17 @@ After setup, click **Configure** on the Jullix integration to adjust:
 
 - **Update interval**: 30–300 seconds (default: 60)
 - **Enable cost & savings sensors**: Show cost and savings data
-- **Enable charger control**: Allow turning chargers on/off from Home Assistant
+- **Enable charger control**: Expose charger switch, max power number, and mode select
 - **Enable plug control**: Allow turning smart plugs on/off
 - **Prefer local Jullix-Direct**: Use local device for real-time data when configured
+
+### Services
+
+When the integration is loaded, these services are available under the `jullix` domain:
+
+- **`jullix.set_charger_control`** – Set charger options: `installation_id`, `charger_mac`, and optionally `enabled`, `mode` (eco/turbo/max/block), `max_power` (kW).
+- **`jullix.run_algorithm_hourly`** – Run the hourly optimization algorithm for an installation (`installation_id`).
+- **`jullix.assign_chargersession`** – Assign a charge session: `installation_id`, `session_id`, and optionally `charger_mac`, `car_id`.
 
 ---
 
@@ -132,6 +142,13 @@ Replace `xxx` with your installation ID.
 | ![Config placeholder](docs/screenshots/config-placeholder.png) |
 
 ---
+
+## Testing & CI
+
+The repo includes a pytest test suite and GitHub Actions workflow:
+
+- **Unit tests**: API client, coordinator merge, switch/sensor helpers, service handlers. Run locally: `pip install -r requirements-test.txt && python -m pytest tests/ -v`
+- **Live API tests**: Optional smoke tests against the real API when `JULLIX_API_TOKEN` and `JULLIX_INSTALLATION_ID` are set (e.g. as GitHub Actions secrets). See [tests/README.md](tests/README.md) for details.
 
 ## Documentation
 
