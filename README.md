@@ -133,9 +133,9 @@ Replace `xxx` with your installation ID.
 
 *Replace with real screenshots when available.*
 
-| Dashboard overview | Energy dashboard |
-|--------------------|------------------|
-| ![Dashboard placeholder](docs/screenshots/dashboard-placeholder.png) | ![Energy placeholder](docs/screenshots/energy-placeholder.png) |
+| Dashboard overview |
+|--------------------|
+| ![Dashboard placeholder](docs/screenshots/dashboard-placeholder.png) |
 
 | Integration configuration |
 |----------------------------|
@@ -168,6 +168,7 @@ The repo includes a pytest test suite and GitHub Actions workflow:
 
 ## Changelog
 
+- **1.5.2** – Docs: fix screenshot references (remove deleted energy-placeholder; README and info.md use existing screenshots only).
 - **1.5.1** – Hassfest: remove invalid `icon` key from manifest; README: add repository setup (HACS description/topics) section.
 - **1.5.0** – CI: use `requirements-test-ci.txt` for faster unit tests (config flow/entity tests skipped in CI); hassfest validation workflow; config flow test fix (options flow handler); REPO_SETUP.md and docs updates.
 - **1.4.0** – API client: use `ThreadedResolver` for aiohttp (improved DNS compatibility); HACS brand icon; test updates.
