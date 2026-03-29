@@ -1,5 +1,7 @@
 # Jullix integration tests
 
+For extending the integration (sensors, API, structure), see [docs/development.md](../docs/development.md).
+
 Run the test suite from the repo root:
 
 - **Quick / CI** (no Home Assistant): `pip install -r requirements-test-ci.txt` then `python -m pytest tests/ -v` — config flow and entity tests are skipped.
@@ -8,12 +10,15 @@ Run the test suite from the repo root:
 Tests cover:
 
 - **test_api.py** – API client (installations, chargers, plugs, set_charger_control, set_plug_control, error handling)
-- **test_coordinator.py** – `_merge_local_data` for Jullix-Direct
+- **test_coordinator.py** – Coordinator refresh, merges, and optional fetch behavior
 - **test_sensor_helpers.py** – `_extract_plug_energy_total` for plug energy responses
-- **test_services.py** – Service handlers (set_charger_control, run_algorithm_hourly, assign_chargersession)
+- **test_services.py** – Service handlers (set_charger_control, run_algorithm_hourly, assign_chargersession, update_tariff)
 - **test_switch.py** – `_is_enabled` logic for charger/plug state
+- **test_derived.py** – Derived helpers (tariff, statistics, session, insights)
+- **test_events.py** – `jullix_event` firing helpers
+- **test_models.py** – Installation snapshot and parser behavior
 - **test_config_flow.py** – Config flow steps and options (skipped unless real Home Assistant is installed)
-- **test_entities.py** – Sensor/switch/number/select setup and unique_ids (skipped unless real Home Assistant is installed)
+- **test_entities.py** – Platform setup and `unique_id`s (skipped unless real Home Assistant is installed)
 - **test_live_api.py** – Live API smoke tests (skipped unless env vars are set; see below)
 
 Home Assistant is mocked for most tests so they run without a full HA install. Config flow and entity tests require real `homeassistant` (e.g. from `requirements-test.txt`) and are skipped when the mock is active.
@@ -22,8 +27,9 @@ Home Assistant is mocked for most tests so they run without a full HA install. C
 
 The workflow in `.github/workflows/test.yml` runs on every push and pull request to `main`/`master`:
 
-1. **Unit tests** – Install `requirements-test-ci.txt` (no full Home Assistant); config flow and entity tests are skipped. No secrets required.
-2. **Live API smoke test** – Runs real API calls when these **repository secrets** are set:
+1. **Unit tests** – Install `requirements-test-ci.txt` (no full Home Assistant); tests that require `homeassistant` are skipped. No secrets required. Optional **mypy** step (non-blocking).
+2. **Config flow and entity tests** – Install Home Assistant and run `tests/test_config_flow.py` and `tests/test_entities.py` only.
+3. **Live API smoke test** – Runs real API calls when these **repository secrets** are set:
 
 | Secret name | Description |
 |-------------|-------------|

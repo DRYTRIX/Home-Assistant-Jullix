@@ -1,4 +1,4 @@
-# Contributing to HACS-Jullix
+# Contributing to Home Assistant Jullix
 
 ## Development setup
 
@@ -49,4 +49,4 @@ In GitHub Actions, add these as repository secrets (**Settings → Secrets and v
 
 ## Submitting changes
 
-Open a pull request against `main`. The CI workflow uses `requirements-test-ci.txt` (no full Home Assistant install) and runs unit tests; live API tests run if secrets are configured.
+Open a pull request against `main`. The CI workflow runs a **unit-test** job with `requirements-test-ci.txt` (no full Home Assistant install), a **config flow and entity** job that installs Home Assistant and runs those tests, and an optional **live API** job when repository secrets are set.

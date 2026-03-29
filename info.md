@@ -15,19 +15,22 @@ Integration for the [Jullix](https://wiki.jullix.be/) Energy Management System (
 - **Energy statistics**: Optional daily, monthly, yearly energy statistics sensors
 - **Weather alarm**: Sensor for active weather alerts
 - **Algorithm, tariff, weather**: Optimization overview, tariff, and weather forecast sensors; services for run-hourly, assign charge session, and update tariff
-- **Jullix-Direct**: Local real-time data without internet
+- **Binary sensors**: For example peak tariff when cost sensors are enabled
+- **Automation events**: Optional `jullix_event` for charger, battery, and grid-style transitions
+- **Session history**: Optional storage of recent charge sessions in Home Assistant
+- **Jullix-Direct**: Local real-time data merged with cloud when configured
 
 ## Installation
 
-1. Install via **HACS** → Integrations → Explore & Download Integrations → search for **Jullix**
-2. Restart Home Assistant
-3. Go to **Settings** → **Devices & services** → **Add integration** → **Jullix**
+1. In **HACS** → **Integrations** → **⋮** → **Custom repositories**, add `https://github.com/DRYTRIX/Home-Assistant-Jullix` (category **Integration**) if the integration is not in the default catalog
+2. **Explore & Download** → search **Jullix** → **Download**, then restart Home Assistant
+3. **Settings** → **Devices & services** → **Add integration** → **Jullix**
 4. Enter your API token from [Mijn Jullix](https://mijn.jullix.be/) (Profiel → API-tokens) and select your installation(s)
 
-![Jullix Dashboard Preview](docs/screenshots/hacs-preview.png)
+![Jullix HACS preview](docs/screenshots/hacs-preview.png)
 
-*Replace with real screenshots when available.*
+More images and captions: [docs/screenshots](docs/screenshots/README.md).
 
 ## Documentation
 
-For full setup, configuration options, dashboard examples, and power unit details, see the [README](https://github.com/dries/HACS-Jullix).
+For full setup, configuration options, dashboard examples, architecture, and troubleshooting, see the [README](https://github.com/DRYTRIX/Home-Assistant-Jullix) and the [docs](https://github.com/DRYTRIX/Home-Assistant-Jullix/tree/main/docs) folder on GitHub.
