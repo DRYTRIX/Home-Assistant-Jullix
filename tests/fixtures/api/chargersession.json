@@ -1,0 +1,12 @@
+{
+  "data": {
+    "sessions": [
+      {
+        "id": "sess-abc",
+        "state": "active",
+        "energy_kwh": 12.5,
+        "charger_mac": "aa:bb:cc:dd:ee:ff"
+      }
+    ]
+  }
+}

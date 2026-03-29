@@ -1,0 +1,11 @@
+{
+  "data": {
+    "powers": {
+      "grid": 0.5,
+      "solar": 2.0,
+      "home": 1.5,
+      "battery": -0.3
+    }
+  },
+  "status": "ok"
+}

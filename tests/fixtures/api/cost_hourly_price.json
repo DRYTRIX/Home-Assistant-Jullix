@@ -1,0 +1,11 @@
+{
+  "data": {
+    "hours": [
+      { "hour": 0, "price": 0.05 },
+      { "hour": 1, "price": 0.05 },
+      { "hour": 14, "price": 0.35 },
+      { "hour": 15, "price": 0.38 },
+      { "hour": 20, "price": 0.12 }
+    ]
+  }
+}

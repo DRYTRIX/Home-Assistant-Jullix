@@ -86,22 +86,24 @@ def mock_api_client():
 
 
 @pytest.fixture
-def sample_install_data():
-    """Sample installation data as returned by coordinator."""
-    return {
-        "summary": {"powers": {"grid": 1.0, "solar": 2.0, "home": 1.5}},
-        "chargers": [
-            {"id": "mac-1", "name": "Charger 1", "active": True, "power": 7.4},
-        ],
-        "charger_control": {
-            "mac-1": {"config": {"mode": "eco", "max_power": 11.0}},
-        },
-        "plugs": [
-            {"id": "plug-mac-1", "name": "Plug 1", "power": 100},
-        ],
-        "charger": [],
-        "plug": [],
-        "algorithm_overview": {"state": "ok"},
-        "tariff": {"tariff": "single"},
-        "weather_forecast": [],
-    }
+def sample_installation_snapshot():
+    """Sample installation snapshot as returned by coordinator."""
+    from custom_components.jullix.models import RawInstallFetches, build_installation_snapshot
+
+    return build_installation_snapshot(
+        RawInstallFetches(
+            power_summary={"data": {"powers": {"grid": 1.0, "solar": 2.0, "home": 1.5}}},
+            chargers_response=[
+                {"id": "mac-1", "name": "Charger 1", "active": True, "power": 7.4},
+            ],
+            charger_control_by_mac={
+                "mac-1": {"config": {"mode": "eco", "max_power": 11.0}},
+            },
+            plugs_response=[
+                {"id": "plug-mac-1", "name": "Plug 1", "power": 100},
+            ],
+            algorithm_overview={"state": "ok"},
+            tariff={"tariff": "single"},
+            weather_forecast=[],
+        )
+    )

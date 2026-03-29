@@ -8,10 +8,13 @@ from typing import Any
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, OPTION_ENABLE_CHARGER_CONTROL, OPTION_ENABLE_PLUG_CONTROL
+from .device_helpers import device_info_charger, device_info_plug, device_info_hub
 from .coordinator import JullixDataUpdateCoordinator
+from .sensors.base import get_installation_snapshot
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,16 +39,21 @@ async def async_setup_entry(
 
     entities: list[SwitchEntity] = []
     for install_id in install_ids:
-        install_data = coordinator.data.get(install_id) or {}
-        install_name = _get_install_name(install_data, install_id)
+        snap = get_installation_snapshot(coordinator, install_id)
+        install_name = snap.installation_display_name(install_id)
 
         if enable_charger:
-            chargers = install_data.get("chargers") or []
-            for i, ch in enumerate(chargers):
-                if not isinstance(ch, dict):
-                    continue
-                mac = ch.get("id", ch.get("device_id", ch.get("mac", ch.get("mac_address", str(i)))))
-                name = ch.get("name", ch.get("description", ch.get("label", f"Charger {i + 1}")))
+            for i, ch in enumerate(snap.chargers):
+                model = ch.raw.get("model") or ch.raw.get("type")
+                if model is not None:
+                    model = str(model)
+                ch_dev = device_info_charger(
+                    install_id,
+                    install_name,
+                    ch.mac,
+                    ch.display_name,
+                    model=model,
+                )
                 entities.append(
                     JullixChargerSwitch(
                         coordinator=coordinator,
@@ -53,19 +61,26 @@ async def async_setup_entry(
                         install_id=install_id,
                         install_name=install_name,
                         charger_index=i,
-                        charger_mac=mac,
-                        unique_id=f"{install_id}_charger_{mac}_switch",
-                        name=f"{install_name} {name}",
+                        charger_mac=ch.mac,
+                        unique_id=f"{install_id}_charger_{ch.mac}_switch",
+                        name="Charging",
+                        device_info=ch_dev,
+                        translation_key="charger_charging",
                     )
                 )
 
         if enable_plug:
-            plugs = install_data.get("plugs") or []
-            for i, plug in enumerate(plugs):
-                if not isinstance(plug, dict):
-                    continue
-                mac = plug.get("id", plug.get("device_id", plug.get("mac", plug.get("mac_address", str(i)))))
-                name = plug.get("name", plug.get("description", plug.get("label", f"Plug {i + 1}")))
+            for i, plug in enumerate(snap.plugs):
+                model = plug.raw.get("model") or plug.raw.get("type")
+                if model is not None:
+                    model = str(model)
+                plug_dev = device_info_plug(
+                    install_id,
+                    install_name,
+                    plug.mac,
+                    plug.display_name,
+                    model=model,
+                )
                 entities.append(
                     JullixPlugSwitch(
                         coordinator=coordinator,
@@ -73,18 +88,15 @@ async def async_setup_entry(
                         install_id=install_id,
                         install_name=install_name,
                         plug_index=i,
-                        plug_mac=mac,
-                        unique_id=f"{install_id}_plug_{mac}_switch",
-                        name=f"{install_name} {name}",
+                        plug_mac=plug.mac,
+                        unique_id=f"{install_id}_plug_{plug.mac}_switch",
+                        name="Switch",
+                        device_info=plug_dev,
+                        translation_key="plug_switch",
                     )
                 )
 
     async_add_entities(entities)
-
-
-def _get_install_name(install_data: dict[str, Any], install_id: str) -> str:
-    """Get installation display name."""
-    return f"Installation {install_id[:8]}"
 
 
 class JullixSwitch(CoordinatorEntity[JullixDataUpdateCoordinator], SwitchEntity):
@@ -100,6 +112,9 @@ class JullixSwitch(CoordinatorEntity[JullixDataUpdateCoordinator], SwitchEntity)
         install_name: str,
         unique_id: str,
         name: str,
+        *,
+        device_info: DeviceInfo | None = None,
+        translation_key: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize the switch."""
@@ -109,12 +124,11 @@ class JullixSwitch(CoordinatorEntity[JullixDataUpdateCoordinator], SwitchEntity)
         self._install_name = install_name
         self._attr_unique_id = f"{DOMAIN}_{unique_id}"
         self._attr_name = name
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, install_id)},
-            "name": f"Jullix {install_name}",
-            "manufacturer": "Innovoltus",
-            "model": "Jullix EMS",
-        }
+        if translation_key is not None:
+            self._attr_translation_key = translation_key
+        self._attr_device_info = device_info or device_info_hub(
+            install_id, install_name
+        )
 
 
 class JullixChargerSwitch(JullixSwitch):
@@ -148,18 +162,15 @@ class JullixChargerSwitch(JullixSwitch):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        install_data = self.coordinator.data.get(self._install_id) or {}
-        chargers = install_data.get("chargers") or []
-        charger_detail = install_data.get("charger") or []
+        snap = get_installation_snapshot(self.coordinator, self._install_id)
         is_on = False
-        if isinstance(chargers, list) and len(chargers) > self._charger_index:
-            ch = chargers[self._charger_index]
-            if isinstance(ch, dict):
-                is_on = _is_enabled(ch)
-        if not is_on and isinstance(charger_detail, list) and len(charger_detail) > self._charger_index:
-            ch = charger_detail[self._charger_index]
-            if isinstance(ch, dict):
-                is_on = _is_enabled(ch)
+        if self._charger_index < len(snap.chargers):
+            is_on = _is_enabled(snap.chargers[self._charger_index].raw)
+        if (
+            not is_on
+            and self._charger_index < len(snap.charger_detail_rows)
+        ):
+            is_on = _is_enabled(snap.charger_detail_rows[self._charger_index])
         self._attr_is_on = is_on
         super()._handle_coordinator_update()
 
@@ -205,18 +216,12 @@ class JullixPlugSwitch(JullixSwitch):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        install_data = self.coordinator.data.get(self._install_id) or {}
-        plugs = install_data.get("plugs") or []
-        plug_detail = install_data.get("plug") or []
+        snap = get_installation_snapshot(self.coordinator, self._install_id)
         is_on = False
-        if isinstance(plugs, list) and len(plugs) > self._plug_index:
-            p = plugs[self._plug_index]
-            if isinstance(p, dict):
-                is_on = _is_enabled(p)
-        if not is_on and isinstance(plug_detail, list) and len(plug_detail) > self._plug_index:
-            p = plug_detail[self._plug_index]
-            if isinstance(p, dict):
-                is_on = _is_enabled(p)
+        if self._plug_index < len(snap.plugs):
+            is_on = _is_enabled(snap.plugs[self._plug_index].raw)
+        if not is_on and self._plug_index < len(snap.plug_detail_rows):
+            is_on = _is_enabled(snap.plug_detail_rows[self._plug_index])
         self._attr_is_on = is_on
         super()._handle_coordinator_update()
 

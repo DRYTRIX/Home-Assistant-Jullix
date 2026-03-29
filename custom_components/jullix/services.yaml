@@ -1,29 +1,37 @@
+# Services use voluptuous schemas in __init__.py; descriptions are translated via strings.json.
+
 set_charger_control:
   name: Set charger control
-  description: Set charger control options (enable/disable, mode, max power).
+  description: >-
+    Change charger on/off, charging mode, or maximum power. At least one of enabled,
+    mode, or max_power should be set.
   fields:
     installation_id:
       name: Installation ID
-      description: The Jullix installation ID (from your installation list).
+      description: Jullix installation ID for the site that owns this charger.
       required: true
+      example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
       selector:
         text:
     charger_mac:
       name: Charger MAC
-      description: The charger device MAC/ID.
+      description: Charger identifier (MAC or ID from Jullix).
       required: true
+      example: "AA:BB:CC:DD:EE:FF"
       selector:
         text:
     enabled:
       name: Enabled
-      description: Turn charger on or off.
+      description: Turn the charger on (true) or off (false).
       required: false
+      example: true
       selector:
         boolean:
     mode:
       name: Mode
-      description: Charging mode (eco, turbo, max, block).
+      description: Charging mode — eco, turbo, max, or block.
       required: false
+      example: "eco"
       selector:
         select:
           options:
@@ -33,8 +41,9 @@ set_charger_control:
             - block
     max_power:
       name: Max power (kW)
-      description: Maximum charging power in kW (1.4–22).
+      description: Cap charging power between 1.4 and 22 kW.
       required: false
+      example: 11.0
       selector:
         number:
           min: 1.4
@@ -43,58 +52,66 @@ set_charger_control:
           unit_of_measurement: kW
 
 run_algorithm_hourly:
-  name: Run algorithm hourly
-  description: Run the hourly optimization algorithm for an installation.
+  name: Run hourly optimization
+  description: >-
+    Runs Jullix hourly optimization for the given installation (advanced / automation use).
   fields:
     installation_id:
       name: Installation ID
-      description: The Jullix installation ID.
+      description: Jullix installation ID.
       required: true
+      example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
       selector:
         text:
 
 assign_chargersession:
   name: Assign charge session
-  description: Assign a charge session to a charger or car.
+  description: Assign a charge session to a charger and/or car.
   fields:
     installation_id:
       name: Installation ID
-      description: The Jullix installation ID.
+      description: Jullix installation ID.
       required: true
+      example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
       selector:
         text:
     session_id:
       name: Session ID
-      description: The charge session ID to assign.
+      description: Session identifier from Jullix.
       required: true
+      example: "session-12345"
       selector:
         text:
     charger_mac:
       name: Charger MAC
-      description: Optional charger MAC to assign to.
+      description: Optional charger to bind the session to.
       required: false
+      example: "AA:BB:CC:DD:EE:FF"
       selector:
         text:
     car_id:
       name: Car ID
-      description: Optional car ID to assign to.
+      description: Optional vehicle ID.
       required: false
+      example: "car-789"
       selector:
         text:
 
 update_tariff:
   name: Update tariff
-  description: Update the energy tariff for an installation (e.g. single, dual).
+  description: Set the active tariff for an installation (must match values Jullix accepts).
   fields:
     installation_id:
       name: Installation ID
-      description: The Jullix installation ID.
+      description: Jullix installation ID.
       required: true
+      example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
       selector:
         text:
     tariff:
       name: Tariff
-      description: Tariff identifier (e.g. single, dual) as accepted by the Jullix API.
+      description: Tariff code such as single or dual.
       required: true
+      example: "dual"
       selector:
         text:

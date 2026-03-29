@@ -1,48 +1,8 @@
-"""Tests for Jullix sensor helper functions."""
+"""Tests for Jullix plug energy parsing (models layer)."""
 
 from __future__ import annotations
 
-from typing import Any
-
-import pytest
-
-
-def _safe_float(value: Any, default: float | None = None) -> float | None:
-    """Safely convert value to float."""
-    if value is None:
-        return default
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return default
-
-
-def _extract_plug_energy_total(value: Any) -> float | None:
-    """Mirror of sensor._extract_plug_energy_total: extract total from plug energy response."""
-    if value is None:
-        return None
-    if isinstance(value, (int, float)):
-        return float(value)
-    if isinstance(value, dict):
-        if "total" in value:
-            return _safe_float(value["total"])
-        if "value" in value:
-            return _safe_float(value["value"])
-        if "energy" in value:
-            return _safe_float(value["energy"])
-        if "data" in value:
-            return _extract_plug_energy_total(value["data"])
-    if isinstance(value, list):
-        total = 0.0
-        for item in value:
-            if isinstance(item, (int, float)):
-                total += float(item)
-            elif isinstance(item, dict):
-                v = item.get("value", item.get("energy", item.get("total")))
-                if v is not None:
-                    total += float(v)
-        return total if total else None
-    return None
+from custom_components.jullix.models.util import extract_plug_energy_total_kwh as _extract_plug_energy_total
 
 
 def test_extract_plug_energy_total_none():

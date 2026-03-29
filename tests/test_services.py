@@ -78,15 +78,16 @@ async def test_set_charger_control_with_mode_and_max_power(hass_with_jullix):
 
 @pytest.mark.asyncio
 async def test_set_charger_control_unknown_installation_raises(hass_with_jullix):
-    """set_charger_control raises HomeAssistantError when installation_id not in any entry."""
-    from homeassistant.exceptions import HomeAssistantError
+    """set_charger_control raises ServiceValidationError when installation_id not configured."""
+    from homeassistant.exceptions import ServiceValidationError
+
     call = MagicMock()
     call.data = {
         "installation_id": "unknown-install",
         "charger_mac": "AA:BB:CC",
         "enabled": True,
     }
-    with pytest.raises(HomeAssistantError, match="No Jullix config entry found"):
+    with pytest.raises(ServiceValidationError, match="No Jullix configuration includes"):
         await _handle_set_charger_control(hass_with_jullix, call)
 
 
@@ -162,9 +163,10 @@ async def test_update_tariff_calls_api_and_refreshes(hass_with_jullix):
 
 @pytest.mark.asyncio
 async def test_update_tariff_unknown_installation_raises(hass_with_jullix):
-    """update_tariff raises HomeAssistantError when installation_id not in any entry."""
-    from homeassistant.exceptions import HomeAssistantError
+    """update_tariff raises ServiceValidationError when installation_id not configured."""
+    from homeassistant.exceptions import ServiceValidationError
+
     call = MagicMock()
     call.data = {"installation_id": "unknown-install", "tariff": "single"}
-    with pytest.raises(HomeAssistantError, match="No Jullix config entry found"):
+    with pytest.raises(ServiceValidationError, match="No Jullix configuration includes"):
         await _handle_update_tariff(hass_with_jullix, call)

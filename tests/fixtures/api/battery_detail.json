@@ -1,0 +1,10 @@
+{
+  "data": [
+    {
+      "name": "Pack A",
+      "power": 1.2,
+      "battery": { "soc": 85.0 }
+    }
+  ],
+  "status": "ok"
+}

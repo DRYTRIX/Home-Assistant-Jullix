@@ -66,7 +66,27 @@ OPTION_ENABLE_CHARGER_CONTROL = "enable_charger_control"
 OPTION_ENABLE_PLUG_CONTROL = "enable_plug_control"
 OPTION_USE_LOCAL = "use_local"
 OPTION_DEFAULT_INSTALL = "default_install"
+OPTION_ENABLE_INSIGHTS = "enable_insights"
+OPTION_ENABLE_EVENTS = "enable_events"
+OPTION_ENABLE_ADAPTIVE_POLLING = "enable_adaptive_polling"
+OPTION_ENABLE_CHARGER_SESSION = "enable_charger_session"
+OPTION_ENABLE_SESSION_HISTORY = "enable_session_history"
 
 # Aliases used by coordinator and __init__ (same option key).
 CONF_UPDATE_INTERVAL = OPTION_SCAN_INTERVAL
 DEFAULT_UPDATE_INTERVAL = DEFAULT_SCAN_INTERVAL
+
+# Custom event bus type (automation: event type = jullix_event).
+EVENT_JULLIX = "jullix_event"
+
+# Event / heuristic thresholds (watts / SoC / consecutive polls).
+CHARGER_ACTIVE_POWER_W = 400.0
+CHARGER_IDLE_POWER_W = 150.0
+GRID_OUTAGE_IMPORT_THRESHOLD_W = 300.0
+GRID_OUTAGE_IDLE_W = 80.0
+GRID_OUTAGE_CONSECUTIVE_POLLS = 2
+BATTERY_SOC_FULL_PCT = 95.0
+BATTERY_SOC_EMPTY_PCT = 10.0
+ADAPTIVE_ACTIVE_GRID_ABS_W = 1500.0
+ADAPTIVE_ACTIVE_BATTERY_ABS_W = 350.0
+ADAPTIVE_FAST_POLL_SECONDS = 30

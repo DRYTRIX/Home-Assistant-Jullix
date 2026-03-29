@@ -9,10 +9,13 @@ from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfPower
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, OPTION_ENABLE_CHARGER_CONTROL
+from .device_helpers import device_info_charger
 from .coordinator import JullixDataUpdateCoordinator
+from .sensors.base import get_installation_snapshot
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -20,11 +23,6 @@ _LOGGER = logging.getLogger(__name__)
 CHARGER_MAX_POWER_MIN = 1.4
 CHARGER_MAX_POWER_MAX = 22.0
 CHARGER_MAX_POWER_STEP = 0.2
-
-
-def _get_install_name(install_data: dict[str, Any], install_id: str) -> str:
-    """Get installation display name."""
-    return f"Installation {install_id[:8]}"
 
 
 async def async_setup_entry(
@@ -45,18 +43,23 @@ async def async_setup_entry(
 
     entities: list[NumberEntity] = []
     for install_id in install_ids:
-        install_data = coordinator.data.get(install_id) or {}
-        install_name = _get_install_name(install_data, install_id)
+        snap = get_installation_snapshot(coordinator, install_id)
+        install_name = snap.installation_display_name(install_id)
 
         if not enable_charger:
             continue
 
-        chargers = install_data.get("chargers") or []
-        for i, ch in enumerate(chargers):
-            if not isinstance(ch, dict):
-                continue
-            mac = ch.get("id", ch.get("device_id", ch.get("mac", ch.get("mac_address", str(i)))))
-            name = ch.get("name", ch.get("description", ch.get("label", f"Charger {i + 1}")))
+        for i, ch in enumerate(snap.chargers):
+            model = ch.raw.get("model") or ch.raw.get("type")
+            if model is not None:
+                model = str(model)
+            ch_dev = device_info_charger(
+                install_id,
+                install_name,
+                ch.mac,
+                ch.display_name,
+                model=model,
+            )
             entities.append(
                 JullixChargerMaxPowerNumber(
                     coordinator=coordinator,
@@ -64,9 +67,11 @@ async def async_setup_entry(
                     install_id=install_id,
                     install_name=install_name,
                     charger_index=i,
-                    charger_mac=mac,
-                    unique_id=f"{install_id}_charger_{mac}_max_power",
-                    name=f"{install_name} {name} max power",
+                    charger_mac=ch.mac,
+                    unique_id=f"{install_id}_charger_{ch.mac}_max_power",
+                    name="Max power",
+                    device_info=ch_dev,
+                    translation_key="charger_max_power",
                 )
             )
 
@@ -95,6 +100,9 @@ class JullixChargerMaxPowerNumber(
         charger_mac: str,
         unique_id: str,
         name: str,
+        *,
+        device_info: DeviceInfo | None = None,
+        translation_key: str | None = None,
     ) -> None:
         """Initialize the charger max power number."""
         super().__init__(coordinator)
@@ -105,12 +113,11 @@ class JullixChargerMaxPowerNumber(
         self._charger_mac = charger_mac
         self._attr_unique_id = f"{DOMAIN}_{unique_id}"
         self._attr_name = name
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, install_id)},
-            "name": f"Jullix {install_name}",
-            "manufacturer": "Innovoltus",
-            "model": "Jullix EMS",
-        }
+        if translation_key is not None:
+            self._attr_translation_key = translation_key
+        if device_info is None:
+            raise ValueError("device_info is required for JullixChargerMaxPowerNumber")
+        self._attr_device_info = device_info
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -132,9 +139,8 @@ class JullixChargerMaxPowerNumber(
 
     async def async_set_native_value(self, value: float) -> None:
         """Set max power (kW)."""
-        install_data = self.coordinator.data.get(self._install_id) or {}
-        controls = install_data.get("charger_control") or {}
-        ctrl = controls.get(self._charger_mac)
+        snap = get_installation_snapshot(self.coordinator, self._install_id)
+        ctrl = snap.charger_control.get(self._charger_mac)
         config: dict[str, Any] = {}
         if isinstance(ctrl, dict):
             config = dict(ctrl.get("config", ctrl) or {})
