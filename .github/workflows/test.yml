@@ -37,6 +37,26 @@ jobs:
           mypy custom_components/jullix --ignore-missing-imports --no-error-summary 2>/dev/null || true
         # Optional: remove "|| true" to fail the job on type errors once baseline is clean
 
+  config-flow-and-entities:
+    name: Config flow and entity tests (Home Assistant)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install Home Assistant and test deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install "homeassistant>=2024.12.0" pytest pytest-asyncio aiohttp voluptuous
+
+      - name: Run config flow and entity tests
+        run: |
+          python -m pytest tests/test_config_flow.py tests/test_entities.py -v --tb=short
+
   live-api:
     name: Live API smoke test
     runs-on: ubuntu-latest
