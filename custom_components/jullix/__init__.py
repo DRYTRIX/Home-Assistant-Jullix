@@ -30,8 +30,6 @@ from .const import (
     OPTION_ENABLE_STATISTICS,
     OPTION_USE_LOCAL,
 )
-from .coordinator import JullixDataUpdateCoordinator
-from .session_history import SessionHistoryRecorder
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -103,6 +101,9 @@ SCHEMA_UPDATE_TARIFF = vol.Schema(
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Jullix from a config entry."""
+    from .coordinator import JullixDataUpdateCoordinator
+    from .session_history import SessionHistoryRecorder
+
     hass.data.setdefault(DOMAIN, {})
 
     api_token = entry.data.get(CONF_API_TOKEN)

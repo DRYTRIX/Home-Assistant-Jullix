@@ -47,6 +47,7 @@ If the sensor is tied to an **extended** API group, consider registering the fet
 See [`tests/README.md`](../tests/README.md) for commands and CI behavior.
 
 - **CI / quick run:** `pip install -r requirements-test-ci.txt` then `python -m pytest tests/ -v` — config flow and entity tests are skipped without full Home Assistant.
+- **Without Home Assistant:** [`tests/conftest.py`](../tests/conftest.py) registers minimal stubs (`DataUpdateCoordinator`, `homeassistant.util.dt`, `ServiceValidationError`, etc.) so coordinator and platform code can be imported when only the CI requirements are installed.
 - **Full suite:** `pip install -r requirements-test.txt` then `python -m pytest tests/ -v` — includes tests that import `homeassistant`.
 - **Live API:** Set `JULLIX_API_TOKEN` and `JULLIX_INSTALLATION_ID`; optional smoke tests run when both are present.
 

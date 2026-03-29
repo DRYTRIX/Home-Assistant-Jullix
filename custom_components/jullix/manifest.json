@@ -3,16 +3,16 @@
   "name": "Jullix",
   "codeowners": ["@dries"],
   "config_flow": true,
-  "zeroconf": [
-    {
-      "type": "_http._tcp.local.",
-      "name": "jullix*"
-    }
-  ],
   "documentation": "https://github.com/DRYTRIX/Home-Assistant-Jullix",
   "integration_type": "device",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/DRYTRIX/Home-Assistant-Jullix/issues",
   "requirements": ["aiohttp>=3.8.0"],
-  "version": "1.7.0"
+  "version": "1.7.1",
+  "zeroconf": [
+    {
+      "type": "_http._tcp.local.",
+      "name": "jullix*"
+    }
+  ]
 }

@@ -12,7 +12,15 @@ from homeassistant.config_entries import ConfigFlow, OptionsFlow
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import config_validation as cv
-from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
+
+try:
+    from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
+except ImportError:
+    try:
+        from homeassistant.components.zeroconf import ZeroconfServiceInfo
+    except ImportError:
+        # Tests / minimal env: loading components.zeroconf requires the zeroconf package.
+        ZeroconfServiceInfo = Any  # type: ignore[misc,assignment]
 
 from .api import JullixApiClient, JullixApiError, JullixAuthError
 from .const import (

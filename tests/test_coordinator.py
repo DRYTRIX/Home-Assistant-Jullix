@@ -198,7 +198,8 @@ async def test_async_update_data_uses_last_good_when_build_raises(
         install_ids=["inst-1"],
         enable_cost=False,
     )
-    await coordinator._async_update_data()
+    # Mirror HA DataUpdateCoordinator: parent refresh assigns self.data from the return value.
+    coordinator.data = await coordinator._async_update_data()
     assert "inst-1" in coordinator.data
     good = coordinator.data["inst-1"]
 
@@ -208,5 +209,5 @@ async def test_async_update_data_uses_last_good_when_build_raises(
         new_callable=AsyncMock,
         side_effect=RuntimeError("network down"),
     ):
-        await coordinator._async_update_data()
+        coordinator.data = await coordinator._async_update_data()
     assert coordinator.data["inst-1"] is good

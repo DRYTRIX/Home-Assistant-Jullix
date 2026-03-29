@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import sys
+import types
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Generic, TypeVar
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -21,15 +24,59 @@ except ImportError:
     _HA_AVAILABLE = False
 
 if not _HA_AVAILABLE and "homeassistant" not in sys.modules:
-    from unittest.mock import MagicMock
     ha_mock = MagicMock()
     ha_mock.config_entries.ConfigEntry = MagicMock()
     ha_mock.const.Platform = MagicMock()
     ha_mock.core.HomeAssistant = MagicMock()
     ha_mock.core.ServiceCall = MagicMock()
     ha_mock.helpers.config_validation.cv = MagicMock()
-    ha_mock.helpers.update_coordinator.DataUpdateCoordinator = MagicMock()
-    ha_mock.helpers.update_coordinator.CoordinatorEntity = MagicMock()
+
+    _ha_util_dt = types.ModuleType("homeassistant.util.dt")
+
+    def _utcnow() -> datetime:
+        return datetime.now(timezone.utc)
+
+    _ha_util_dt.utcnow = _utcnow
+    _ha_util = types.ModuleType("homeassistant.util")
+    _ha_util.dt = _ha_util_dt
+    sys.modules["homeassistant.util"] = _ha_util
+    sys.modules["homeassistant.util.dt"] = _ha_util_dt
+
+    _ha_helpers_frame = types.ModuleType("homeassistant.helpers.frame")
+    _ha_helpers_frame.report_usage = MagicMock()
+    sys.modules["homeassistant.helpers.frame"] = _ha_helpers_frame
+
+    _ha_update_coordinator = types.ModuleType("homeassistant.helpers.update_coordinator")
+
+    _T_coordinator_data = TypeVar("_T_coordinator_data")
+
+    class UpdateFailed(Exception):
+        """Stub matching homeassistant.helpers.update_coordinator.UpdateFailed."""
+
+    class DataUpdateCoordinator(Generic[_T_coordinator_data]):
+        """Minimal base so JullixDataUpdateCoordinator can subclass without real HA."""
+
+        def __init__(
+            self,
+            hass: object,
+            logger: object,
+            *,
+            name: str | None = None,
+            update_interval: object | None = None,
+        ) -> None:
+            self.hass = hass
+            self.logger = logger
+            self.name = name
+            self.update_interval = update_interval
+
+    class CoordinatorEntity:
+        """Stub entity base for platform modules under mock."""
+
+    _ha_update_coordinator.DataUpdateCoordinator = DataUpdateCoordinator
+    _ha_update_coordinator.UpdateFailed = UpdateFailed
+    _ha_update_coordinator.CoordinatorEntity = CoordinatorEntity
+    ha_mock.helpers.update_coordinator = _ha_update_coordinator
+
     ha_mock.helpers.entity.Entity = MagicMock()
     ha_mock.components.switch.SwitchEntity = MagicMock()
     ha_mock.components.number.NumberEntity = MagicMock()
@@ -41,6 +88,11 @@ if not _HA_AVAILABLE and "homeassistant" not in sys.modules:
     ha_mock.core.callback = lambda f: f
     ha_mock.exceptions = MagicMock()
     ha_mock.exceptions.HomeAssistantError = type("HomeAssistantError", (Exception,), {})
+    ha_mock.exceptions.ServiceValidationError = type(
+        "ServiceValidationError",
+        (Exception,),
+        {},
+    )
     sys.modules["homeassistant"] = ha_mock
     sys.modules["homeassistant.config_entries"] = ha_mock.config_entries
     sys.modules["homeassistant.const"] = ha_mock.const
@@ -49,7 +101,7 @@ if not _HA_AVAILABLE and "homeassistant" not in sys.modules:
     sys.modules["homeassistant.exceptions"] = ha_mock.exceptions
     sys.modules["homeassistant.helpers"] = ha_mock.helpers
     sys.modules["homeassistant.helpers.config_validation"] = ha_mock.helpers.config_validation
-    sys.modules["homeassistant.helpers.update_coordinator"] = ha_mock.helpers.update_coordinator
+    sys.modules["homeassistant.helpers.update_coordinator"] = _ha_update_coordinator
     sys.modules["homeassistant.helpers.entity"] = ha_mock.helpers.entity
     sys.modules["homeassistant.components.switch"] = ha_mock.components.switch
     sys.modules["homeassistant.components.number"] = ha_mock.components.number

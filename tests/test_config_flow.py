@@ -58,7 +58,8 @@ def _make_flow():
     flow.async_show_progress = MagicMock(
         return_value={"type": FlowResultType.SHOW_PROGRESS, "progress_action": "x"}
     )
-    flow.hass.async_create_task = lambda coro: asyncio.create_task(coro)
+    # Record the coroutine only; tests await it directly (avoid double schedule vs asyncio.create_task).
+    flow.hass.async_create_task = MagicMock(return_value=None)
     return flow
 
 
@@ -71,11 +72,11 @@ async def _run_user_step_with_mocked_validation(flow, installations, side_effect
         return_value=installations,
     ):
         result = await flow.async_step_user({CONF_API_TOKEN: "token"})
-    assert result.get("type") == FlowResultType.SHOW_PROGRESS
-    flow.hass.async_create_task.assert_called_once()
-    task = flow.hass.async_create_task.call_args[0][0]
-    await task
-    return await flow.async_step_validate_token(None)
+        assert result.get("type") == FlowResultType.SHOW_PROGRESS
+        flow.hass.async_create_task.assert_called_once()
+        task = flow.hass.async_create_task.call_args[0][0]
+        await task
+        return await flow.async_step_validate_token(None)
 
 
 @pytest.mark.asyncio
@@ -110,10 +111,10 @@ async def test_step_user_no_installations_shows_error():
         side_effect=FlowTokenError("no_installations"),
     ):
         result = await flow.async_step_user({CONF_API_TOKEN: "token"})
-    assert result.get("type") == FlowResultType.SHOW_PROGRESS
-    task = flow.hass.async_create_task.call_args[0][0]
-    await task
-    await flow.async_step_validate_token(None)
+        assert result.get("type") == FlowResultType.SHOW_PROGRESS
+        task = flow.hass.async_create_task.call_args[0][0]
+        await task
+        await flow.async_step_validate_token(None)
     flow.async_show_form.assert_called_once()
     call_kw = flow.async_show_form.call_args[1]
     assert call_kw["errors"] == {"base": "no_installations"}
@@ -129,9 +130,9 @@ async def test_step_user_invalid_auth_shows_error():
         side_effect=FlowTokenError("invalid_auth"),
     ):
         await flow.async_step_user({CONF_API_TOKEN: "bad"})
-    task = flow.hass.async_create_task.call_args[0][0]
-    await task
-    await flow.async_step_validate_token(None)
+        task = flow.hass.async_create_task.call_args[0][0]
+        await task
+        await flow.async_step_validate_token(None)
     call_kw = flow.async_show_form.call_args[1]
     assert call_kw["errors"] == {"base": "invalid_auth"}
 
@@ -146,9 +147,9 @@ async def test_step_user_validation_shows_cannot_connect():
         side_effect=FlowTokenError("cannot_connect"),
     ):
         await flow.async_step_user({CONF_API_TOKEN: "token"})
-    task = flow.hass.async_create_task.call_args[0][0]
-    await task
-    await flow.async_step_validate_token(None)
+        task = flow.hass.async_create_task.call_args[0][0]
+        await task
+        await flow.async_step_validate_token(None)
     call_kw = flow.async_show_form.call_args[1]
     assert call_kw["errors"] == {"base": "cannot_connect"}
 

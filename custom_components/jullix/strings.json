@@ -43,9 +43,7 @@
       }
     },
     "progress": {
-      "validate_token": {
-        "description": "Contacting Jullix and loading your installations…"
-      }
+      "validate_token": "Contacting Jullix and loading your installations…"
     },
     "error": {
       "invalid_token": "Enter your API token.",
