@@ -1,7 +1,7 @@
 # Lightweight test deps for CI (no full Home Assistant install).
 # Entity and config_flow tests are skipped when HA is mocked.
 # For full tests locally: pip install -r requirements-test.txt
-pytest>=9.0.3
+pytest>=9.1.1
 pytest-asyncio>=1.3.0
 pytest-cov>=4.0.0
 aiohttp>=3.13.5
