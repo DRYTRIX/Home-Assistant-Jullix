@@ -263,6 +263,14 @@ class JullixDataUpdateCoordinator(DataUpdateCoordinator[dict[str, JullixInstalla
             weather_forecast=prev.weather_forecast,
             cost_hourly_price=prev.cost_hourly_price,
             chargersession_raw=prev.chargersession_raw,
+            installation_meta=prev.installation_meta,
+            charger_status_by_mac=prev.charger_status_by_mac,
+            charger_events_by_mac=prev.charger_events_by_mac,
+            charger_energies_by_mac=prev.charger_energies_by_mac,
+            algorithm_settings=prev.algorithm_settings,
+            algorithm_results=prev.algorithm_results,
+            algorithm_usage=prev.algorithm_usage,
+            algorithm_pvpredict=prev.algorithm_pvpredict,
         )
 
     async def _build_snapshot_for_install(
@@ -340,6 +348,12 @@ class JullixDataUpdateCoordinator(DataUpdateCoordinator[dict[str, JullixInstalla
         algo = tariff = None
         cost_hourly = None
         chargersession_raw = None
+        installation_meta = None
+        charger_status_by_mac: dict[str, Any] = {}
+        charger_events_by_mac: dict[str, Any] = {}
+        charger_energies_by_mac: dict[str, Any] = {}
+        algorithm_settings = algorithm_results = None
+        algorithm_usage = algorithm_pvpredict = None
 
         if extended:
             ext_coros: list[Any] = [
@@ -347,8 +361,23 @@ class JullixDataUpdateCoordinator(DataUpdateCoordinator[dict[str, JullixInstalla
                 self._limited(self._api_client.get_weather_forecast(install_id)),
                 self._limited(self._api_client.get_algorithm_overview(install_id)),
                 self._limited(self._api_client.get_tariff(install_id)),
+                self._limited(self._api_client.get_installation(install_id)),
+                self._limited(self._api_client.get_algorithm_settings(install_id)),
+                self._limited(self._api_client.get_algorithm_results(install_id)),
+                self._limited(self._api_client.get_algorithm_usage(install_id)),
+                self._limited(self._api_client.get_algorithm_pvpredict(install_id)),
             ]
-            ext_labels = ["weather_alarm", "weather_forecast", "algorithm", "tariff"]
+            ext_labels = [
+                "weather_alarm",
+                "weather_forecast",
+                "algorithm",
+                "tariff",
+                "installation_meta",
+                "algorithm_settings",
+                "algorithm_results",
+                "algorithm_usage",
+                "algorithm_pvpredict",
+            ]
             if self._enable_cost:
                 ext_coros.extend(
                     [
@@ -421,6 +450,50 @@ class JullixDataUpdateCoordinator(DataUpdateCoordinator[dict[str, JullixInstalla
                     stats_m = res
                 elif key == "stats_y":
                     stats_y = res
+                elif key == "installation_meta":
+                    installation_meta = res
+                elif key == "algorithm_settings":
+                    algorithm_settings = res
+                elif key == "algorithm_results":
+                    algorithm_results = res
+                elif key == "algorithm_usage":
+                    algorithm_usage = res
+                elif key == "algorithm_pvpredict":
+                    algorithm_pvpredict = res
+
+            chargers_for_ext = parse_chargers_list(chargers_raw) if chargers_raw else []
+            if chargers_for_ext:
+                today = date.today()
+                status_tasks = [
+                    self._limited(self._api_client.get_charger_status(d.mac))
+                    for d in chargers_for_ext
+                ]
+                events_tasks = [
+                    self._limited(self._api_client.get_charger_events(d.mac))
+                    for d in chargers_for_ext
+                ]
+                energy_tasks = [
+                    self._limited(
+                        self._api_client.get_charger_energies(
+                            d.mac, today.year, today.month, today.day
+                        )
+                    )
+                    for d in chargers_for_ext
+                ]
+                status_res, events_res, energy_res = await asyncio.gather(
+                    asyncio.gather(*status_tasks, return_exceptions=True),
+                    asyncio.gather(*events_tasks, return_exceptions=True),
+                    asyncio.gather(*energy_tasks, return_exceptions=True),
+                )
+                for d, st, ev, en in zip(
+                    chargers_for_ext, status_res, events_res, energy_res
+                ):
+                    if not isinstance(st, Exception) and st:
+                        charger_status_by_mac[d.mac] = st
+                    if not isinstance(ev, Exception) and ev:
+                        charger_events_by_mac[d.mac] = ev
+                    if not isinstance(en, Exception) and en:
+                        charger_energies_by_mac[d.mac] = en
 
         return RawInstallFetches(
             power_summary=fetch.get("power_summary"),
@@ -446,6 +519,14 @@ class JullixDataUpdateCoordinator(DataUpdateCoordinator[dict[str, JullixInstalla
             weather_forecast=weather_forecast,
             cost_hourly_price=cost_hourly,
             chargersession_raw=chargersession_raw,
+            installation_meta=installation_meta,
+            charger_status_by_mac=charger_status_by_mac,
+            charger_events_by_mac=charger_events_by_mac,
+            charger_energies_by_mac=charger_energies_by_mac,
+            algorithm_settings=algorithm_settings,
+            algorithm_results=algorithm_results,
+            algorithm_usage=algorithm_usage,
+            algorithm_pvpredict=algorithm_pvpredict,
         )
 
     async def async_shutdown(self) -> None:

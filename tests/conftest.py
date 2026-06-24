@@ -157,5 +157,13 @@ def sample_installation_snapshot():
             algorithm_overview={"state": "ok"},
             tariff={"tariff": "single"},
             weather_forecast=[],
+            installation_meta={"name": "Test site"},
+            charger_status_by_mac={"mac-1": {"data": {"status": "connected"}}},
+            charger_events_by_mac={"mac-1": {"data": [{"event": "plug_in"}]}},
+            charger_energies_by_mac={"mac-1": {"data": {"energy_kwh": 12.5}}},
+            algorithm_settings={"data": {"enabled": True}},
+            algorithm_results={"data": {"status": "ok"}},
+            algorithm_usage={"data": {"mode": "auto"}},
+            algorithm_pvpredict={"data": {"forecast": [1.0, 2.0]}},
         )
     )

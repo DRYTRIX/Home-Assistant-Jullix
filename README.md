@@ -35,7 +35,8 @@ This integration is a config-flow–based custom component that polls Jullix in 
 - **Cost and savings:** Optional sensors including **cost total this month**; hourly price and **automation helper** sensors; **Peak tariff** binary sensor (when cost path is active).
 - **Energy statistics:** Optional daily, monthly, yearly statistics sensors.
 - **Tariff and weather:** Tariff and forecast sensors; `jullix.update_tariff`; weather alarm.
-- **Algorithm:** Optimization overview sensors; `jullix.run_algorithm_hourly`; `jullix.assign_chargersession`.
+- **Algorithm:** Optimization overview and extended optimizer sensors (settings, results, usage, solar prediction); `jullix.run_algorithm_hourly`, `jullix.force_algorithm_command`, `jullix.assign_chargersession`.
+- **Charger extended data:** Per-charger status, energy today, and event count when the API provides them (extended poll).
 - **Energy insights:** Instantaneous % estimates from power summary (not the same as metered kWh self-consumption)—can be disabled.
 - **Events:** Home Assistant event type **`jullix_event`** for charger, battery, and grid-style transitions (can be disabled).
 - **Adaptive polling:** Faster ~30 s polling while charging or during strong grid/battery activity.
@@ -152,6 +153,7 @@ Services appear under the **`jullix`** domain (**Developer tools** → **Service
 |---------|---------|
 | **`jullix.set_charger_control`** | Set charger **on/off**, **mode** (`eco`, `turbo`, `max`, `block`), and/or **max_power** (kW, 1.4–22). Requires `installation_id`, `charger_mac`. |
 | **`jullix.run_algorithm_hourly`** | Triggers Jullix **hourly optimization** for an installation. |
+| **`jullix.force_algorithm_command`** | Sends a **force command** to the gateway optimizer (`command` must match Jullix API). |
 | **`jullix.assign_chargersession`** | Assigns a charge **session** to optional **charger** and/or **car**. Requires `session_id`. |
 | **`jullix.update_tariff`** | Sets the active **tariff** code (e.g. `single`, `dual`)—must match values Jullix accepts. |
 
@@ -287,6 +289,8 @@ Placeholder images are committed so links stay valid. **Replace** them with real
 | [docs/troubleshooting.md](docs/troubleshooting.md) | Token, API, entities, local connection, services. |
 | [docs/development.md](docs/development.md) | Project layout, new sensors, API extensions, tests. |
 | [docs/releasing.md](docs/releasing.md) | Version bump, tag, GitHub Release, HACS. |
+| [docs/brands.md](docs/brands.md) | Brand images and Home Assistant install analytics. |
+| [docs/hacs-publish.md](docs/hacs-publish.md) | HACS default catalog submission checklist. |
 | [tests/README.md](tests/README.md) | Pytest commands and CI. |
 
 ### External links
@@ -295,6 +299,18 @@ Placeholder images are committed so links stay valid. **Replace** them with real
 - [Integration FAQ](https://wiki.jullix.be/doku.php?id=nl:faq:integratie)
 - [Platform API docs](https://mijn.jullix.be/apidocs/)
 - [HACS publish checklist](https://hacs.xyz/docs/publish/include#check-repository)
+
+---
+
+## Install analytics (optional)
+
+Home Assistant does not report install counts from this integration directly. After merging brand assets into [home-assistant/brands](https://github.com/home-assistant/brands) (see [docs/brands.md](docs/brands.md)), opt-in **Usage analytics** on user instances can list `jullix` in [public analytics](https://analytics.home-assistant.io/). You may then add a README badge from a public feed, for example:
+
+```markdown
+![Home Assistant installs](https://img.shields.io/endpoint?url=https://vaskivskyi.github.io/ha-custom-analytics/badges/jullix/total.json)
+```
+
+Counts are aggregated and under-report instances that disable analytics.
 
 ---
 

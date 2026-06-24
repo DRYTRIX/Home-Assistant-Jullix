@@ -9,6 +9,7 @@ import pytest
 from custom_components.jullix import (
     DOMAIN,
     _handle_assign_chargersession,
+    _handle_force_algorithm_command,
     _handle_run_algorithm_hourly,
     _handle_set_charger_control,
     _handle_update_tariff,
@@ -170,3 +171,31 @@ async def test_update_tariff_unknown_installation_raises(hass_with_jullix):
     call.data = {"installation_id": "unknown-install", "tariff": "single"}
     with pytest.raises(ServiceValidationError, match="No Jullix configuration includes"):
         await _handle_update_tariff(hass_with_jullix, call)
+
+
+@pytest.mark.asyncio
+async def test_force_algorithm_command_calls_api_and_refreshes(hass_with_jullix):
+    """force_algorithm_command posts command payload and refreshes coordinator."""
+    call = MagicMock()
+    call.data = {"installation_id": "inst-1", "command": "refresh"}
+    api = hass_with_jullix.data[DOMAIN]["entry-1"]["api_client"]
+    api.force_algorithm_command = AsyncMock(return_value={})
+    coord = hass_with_jullix.data[DOMAIN]["entry-1"]["coordinator"]
+
+    await _handle_force_algorithm_command(hass_with_jullix, call)
+
+    api.force_algorithm_command.assert_called_once_with(
+        "inst-1", {"command": "refresh"}
+    )
+    coord.async_request_refresh.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_force_algorithm_command_unknown_installation_raises(hass_with_jullix):
+    """force_algorithm_command raises ServiceValidationError when installation_id not configured."""
+    from homeassistant.exceptions import ServiceValidationError
+
+    call = MagicMock()
+    call.data = {"installation_id": "unknown-install", "command": "refresh"}
+    with pytest.raises(ServiceValidationError, match="No Jullix configuration includes"):
+        await _handle_force_algorithm_command(hass_with_jullix, call)

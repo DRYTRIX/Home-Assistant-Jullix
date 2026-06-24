@@ -14,7 +14,8 @@ Integration for the [Jullix](https://wiki.jullix.be/) Energy Management System (
 - **Cost & savings**: Optional cost, savings, and cost total this month sensors
 - **Energy statistics**: Optional daily, monthly, yearly energy statistics sensors
 - **Weather alarm**: Sensor for active weather alerts
-- **Algorithm, tariff, weather**: Optimization overview, tariff, and weather forecast sensors; services for run-hourly, assign charge session, and update tariff
+- **Algorithm, tariff, weather**: Optimization overview plus extended optimizer sensors; services for run-hourly, force command, assign charge session, and update tariff
+- **Charger extended**: Per-charger status, energy today, and events when the API provides them
 - **Binary sensors**: For example peak tariff when cost sensors are enabled
 - **Automation events**: Optional `jullix_event` for charger, battery, and grid-style transitions
 - **Session history**: Optional storage of recent charge sessions in Home Assistant

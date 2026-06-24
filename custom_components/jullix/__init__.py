@@ -66,6 +66,7 @@ SERVICE_SET_CHARGER_CONTROL = "set_charger_control"
 SERVICE_RUN_ALGORITHM_HOURLY = "run_algorithm_hourly"
 SERVICE_ASSIGN_CHARGERSESSION = "assign_chargersession"
 SERVICE_UPDATE_TARIFF = "update_tariff"
+SERVICE_FORCE_ALGORITHM_COMMAND = "force_algorithm_command"
 CHARGER_MODES = ["eco", "turbo", "max", "block"]
 
 SCHEMA_SET_CHARGER_CONTROL = vol.Schema(
@@ -95,6 +96,13 @@ SCHEMA_UPDATE_TARIFF = vol.Schema(
     {
         vol.Required("installation_id"): cv.string,
         vol.Required("tariff"): cv.string,
+    }
+)
+
+SCHEMA_FORCE_ALGORITHM_COMMAND = vol.Schema(
+    {
+        vol.Required("installation_id"): cv.string,
+        vol.Required("command"): cv.string,
     }
 )
 
@@ -198,6 +206,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             SERVICE_UPDATE_TARIFF,
             update_tariff_handler,
             schema=SCHEMA_UPDATE_TARIFF,
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_FORCE_ALGORITHM_COMMAND):
+        async def force_algorithm_handler(call: ServiceCall) -> None:
+            await _handle_force_algorithm_command(hass, call)
+
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_FORCE_ALGORITHM_COMMAND,
+            force_algorithm_handler,
+            schema=SCHEMA_FORCE_ALGORITHM_COMMAND,
         )
 
     return True
@@ -320,6 +339,30 @@ async def _handle_update_tariff(hass: HomeAssistant, call: ServiceCall) -> None:
         api_client = data.get("api_client")
         if api_client:
             await api_client.update_tariff(installation_id, payload)
+            if coordinator := data.get("coordinator"):
+                await coordinator.async_request_refresh()
+            return
+    raise HomeAssistantError(
+        f"No Jullix config entry found for installation_id {installation_id}"
+    )
+
+
+async def _handle_force_algorithm_command(hass: HomeAssistant, call: ServiceCall) -> None:
+    """Handle force_algorithm_command service call."""
+    installation_id = call.data["installation_id"]
+    _validate_installation_id(hass, installation_id)
+    payload = {"command": call.data["command"]}
+    dom = hass.data.get(DOMAIN)
+    if not dom:
+        raise HomeAssistantError("Jullix integration is not loaded")
+    for _entry_id, data in dom.items():
+        if not isinstance(data, dict):
+            continue
+        if installation_id not in (data.get("install_ids") or []):
+            continue
+        api_client = data.get("api_client")
+        if api_client:
+            await api_client.force_algorithm_command(installation_id, payload)
             if coordinator := data.get("coordinator"):
                 await coordinator.async_request_refresh()
             return

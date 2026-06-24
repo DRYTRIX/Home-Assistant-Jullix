@@ -1,6 +1,6 @@
 # Screenshots for documentation
 
-These images are used in the [README](../../README.md) and [info.md](../../info.md). Replace the **placeholder** PNGs in this folder with real Home Assistant UI captures when you can; keep filenames stable so markdown links keep working.
+These images are used in the [README](../../README.md) and [info.md](../../info.md). Replace the **placeholder** PNGs in this folder with real Home Assistant UI captures when you can; keep filenames stable so markdown links keep working. Placeholders do not block HACS, brands, or analytics — see [brands.md](../brands.md).
 
 ## Recommended assets
 

@@ -21,7 +21,7 @@ The integration is **cloud-first** (`iot_class: cloud_polling` in `manifest.json
 
 - **`JullixDataUpdateCoordinator`** subclasses Home Assistant’s `DataUpdateCoordinator`. Its data type is `dict[str, JullixInstallationSnapshot]` (one snapshot per configured installation ID).
 - **Concurrency:** Fetches are limited with an asyncio semaphore (`_FETCH_CONCURRENCY = 4`) to avoid hammering the API.
-- **Extended polling:** Not every API group runs on every refresh. “Extended” groups (cost, statistics, tariff, weather, algorithm, charger session, and related) run when [`run_extended_this_refresh`](../custom_components/jullix/features.py) is true—by default every 3rd refresh (`EXTENDED_POLL_INTERVAL`). See [Feature tiers](features.md).
+- **Extended polling:** Not every API group runs on every refresh. “Extended” groups (cost, statistics, tariff, weather, algorithm, charger session, and related) run when [`run_extended_this_refresh`](../custom_components/jullix/features.py) is true—by default every 3rd refresh (`EXTENDED_POLL_INTERVAL`). See [Feature tiers](features.md). This group also fetches installation metadata (used for the device display name), the extended algorithm endpoints (settings, results, usage, PV predict), and per-charger status/events/energies (keyed by MAC in `charger_status_by_mac`, `charger_events_by_mac`, `charger_energies_by_mac`).
 - **Adaptive polling:** When enabled, the coordinator can shorten the update interval while chargers are active or grid/battery power is high (`ADAPTIVE_FAST_POLL_SECONDS`, thresholds in `const.py`).
 - **Jullix-Direct:** If a local host was configured and **Merge local Jullix-Direct data** is on, the coordinator instantiates **`JullixLocalClient`** and merges local EMS data with cloud snapshots (`merge_local_snapshot`).
 - **Events:** After a successful update, [`events.detect_and_fire_events`](../custom_components/jullix/events.py) compares successive snapshots and may fire **`jullix_event`** on meaningful transitions (charger start/stop, battery thresholds, grid heuristics).
@@ -51,11 +51,11 @@ Entities should treat **`JullixInstallationSnapshot`** as the only structured so
 - `SENSOR` (bulk of the integration)
 - `SWITCH`, `NUMBER`, `SELECT` (chargers and plugs when control options are enabled)
 
-**Sensors** are split by domain under [`custom_components/jullix/sensors/`](../custom_components/jullix/sensors/); [`sensors/setup.py`](../custom_components/jullix/sensors/setup.py) aggregates `create_*_entities` factories based on config entry options (cost, statistics, insights, charger session, etc.).
+**Sensors** are split by domain under [`custom_components/jullix/sensors/`](../custom_components/jullix/sensors/); [`sensors/setup.py`](../custom_components/jullix/sensors/setup.py) aggregates `create_*_entities` factories based on config entry options (cost, statistics, insights, charger session, etc.). [`sensors/algorithm_extended.py`](../custom_components/jullix/sensors/algorithm_extended.py) and [`sensors/charger_extended.py`](../custom_components/jullix/sensors/charger_extended.py) are unconditional (not option-gated): each entity is only created when the corresponding extended-poll data is actually present on the snapshot.
 
 **Derived tariff logic** (cheap window, peak hour, `is_peak_now`) lives under [`derived/`](../custom_components/jullix/derived/) and feeds tariff-related sensors and the peak binary sensor.
 
-**Services** are registered in `__init__.py` with voluptuous schemas; descriptions for the UI come from [`services.yaml`](../custom_components/jullix/services.yaml) and [`strings.json`](../custom_components/jullix/strings.json).
+**Services** are registered in `__init__.py` with voluptuous schemas; descriptions for the UI come from [`services.yaml`](../custom_components/jullix/services.yaml) and [`strings.json`](../custom_components/jullix/strings.json). This includes `jullix.force_algorithm_command` for sending optimizer force commands.
 
 ## Data flow
 

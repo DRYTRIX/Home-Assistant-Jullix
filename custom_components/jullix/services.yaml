@@ -97,6 +97,27 @@ assign_chargersession:
       selector:
         text:
 
+force_algorithm_command:
+  name: Force algorithm command
+  description: >-
+    Send a force command to the Jullix gateway optimizer for an installation.
+    The command string must match values accepted by the Jullix API.
+  fields:
+    installation_id:
+      name: Installation ID
+      description: Jullix installation ID.
+      required: true
+      example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+      selector:
+        text:
+    command:
+      name: Command
+      description: Optimizer command identifier (see Jullix API documentation).
+      required: true
+      example: "refresh"
+      selector:
+        text:
+
 update_tariff:
   name: Update tariff
   description: Set the active tariff for an installation (must match values Jullix accepts).

@@ -44,6 +44,14 @@ class RawInstallFetches:
     weather_forecast: Any = None
     cost_hourly_price: Any = None
     chargersession_raw: Any = None
+    installation_meta: Any = None
+    charger_status_by_mac: dict[str, Any] | None = None
+    charger_events_by_mac: dict[str, Any] | None = None
+    charger_energies_by_mac: dict[str, Any] | None = None
+    algorithm_settings: Any = None
+    algorithm_results: Any = None
+    algorithm_usage: Any = None
+    algorithm_pvpredict: Any = None
 
 
 @dataclass(frozen=True)
@@ -75,8 +83,22 @@ class JullixInstallationSnapshot:
     weather_forecast: Any
     cost_hourly_price: Any
     chargersession_raw: Any
+    installation_meta: Any
+    charger_status_by_mac: dict[str, Any]
+    charger_events_by_mac: dict[str, Any]
+    charger_energies_by_mac: dict[str, Any]
+    algorithm_settings: Any
+    algorithm_results: Any
+    algorithm_usage: Any
+    algorithm_pvpredict: Any
 
     def installation_display_name(self, install_id: str) -> str:
+        meta = self.installation_meta
+        if isinstance(meta, dict):
+            for key in ("name", "title", "label", "display_name"):
+                val = meta.get(key)
+                if val:
+                    return str(val)
         return f"Installation {install_id[:8]}"
 
     # --- Charger / plug power for sensors (index-based) ---
@@ -196,6 +218,11 @@ def build_installation_snapshot(raw: RawInstallFetches) -> JullixInstallationSna
     weather_f = _unwrap(raw.weather_forecast)
     hourly = _unwrap(raw.cost_hourly_price)
     cs_raw = _unwrap(raw.chargersession_raw)
+    inst_meta = _unwrap(raw.installation_meta)
+    algo_settings = _unwrap(raw.algorithm_settings)
+    algo_results = _unwrap(raw.algorithm_results)
+    algo_usage = _unwrap(raw.algorithm_usage)
+    algo_pvpredict = _unwrap(raw.algorithm_pvpredict)
 
     return JullixInstallationSnapshot(
         power_summary=ps,
@@ -223,6 +250,14 @@ def build_installation_snapshot(raw: RawInstallFetches) -> JullixInstallationSna
         weather_forecast=weather_f,
         cost_hourly_price=hourly,
         chargersession_raw=cs_raw,
+        installation_meta=inst_meta,
+        charger_status_by_mac=dict(raw.charger_status_by_mac or {}),
+        charger_events_by_mac=dict(raw.charger_events_by_mac or {}),
+        charger_energies_by_mac=dict(raw.charger_energies_by_mac or {}),
+        algorithm_settings=algo_settings,
+        algorithm_results=algo_results,
+        algorithm_usage=algo_usage,
+        algorithm_pvpredict=algo_pvpredict,
     )
 
 

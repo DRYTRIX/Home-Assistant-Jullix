@@ -115,7 +115,7 @@ class JullixConfigFlow(ConfigFlow, domain=DOMAIN):
         config_entry: config_entries.ConfigEntry,
     ) -> JullixOptionsFlowHandler:
         """Get the options flow for this handler."""
-        return JullixOptionsFlowHandler(config_entry)
+        return JullixOptionsFlowHandler()
 
     def __init__(self) -> None:
         """Initialize config flow."""
@@ -148,7 +148,10 @@ class JullixConfigFlow(ConfigFlow, domain=DOMAIN):
         """Handle the initial step."""
         errors: dict[str, str] = {}
 
-        if user_input is not None:
+        if self._token_flow_error:
+            errors["base"] = self._token_flow_error
+            self._token_flow_error = None
+        elif user_input is not None:
             token = user_input.get(CONF_API_TOKEN, "").strip()
             if not token:
                 errors["base"] = "invalid_token"
@@ -188,53 +191,32 @@ class JullixConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_validate_token(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Continue after token validation progress completes."""
+        """Continue after token validation progress completes.
+
+        This step is only ever reached as the resume-step of a show_progress
+        (async_step_user). Home Assistant requires that the result here be
+        show_progress or show_progress_done only - returning a form directly
+        raises ValueError inside the progress task's done-callback, which is
+        swallowed there and never reaches the frontend (the flow just hangs).
+        So every branch below hands off via async_show_progress_done instead.
+        """
         if self._token_flow_error:
-            err = self._token_flow_error
-            self._token_flow_error = None
-            return self.async_show_form(
-                step_id="user",
-                data_schema=vol.Schema(
-                    {vol.Required(CONF_API_TOKEN): str},
-                ),
-                errors={"base": err},
-            )
+            return self.async_show_progress_done(next_step_id="user")
 
         n = len(self._installations)
         if n == 1:
             inst = self._installations[0]
             iid = str(inst.get("id", inst.get("install_id", "")))
             if not iid:
-                return self.async_show_form(
-                    step_id="user",
-                    data_schema=vol.Schema(
-                        {vol.Required(CONF_API_TOKEN): str},
-                    ),
-                    errors={"base": "cannot_connect"},
-                )
-            return await self.async_step_local(
-                {
-                    CONF_API_TOKEN: self._api_token,
-                    CONF_INSTALL_IDS: [iid],
-                }
-            )
+                self._token_flow_error = "cannot_connect"
+                return self.async_show_progress_done(next_step_id="user")
+            self._config = {
+                CONF_API_TOKEN: self._api_token,
+                CONF_INSTALL_IDS: [iid],
+            }
+            return self.async_show_progress_done(next_step_id="local")
 
-        install_options = {
-            str(inst.get("id", inst.get("install_id", ""))): inst.get(
-                "name", f"Installation {inst.get('id', '?')}"
-            )
-            for inst in self._installations
-        }
-
-        return self.async_show_form(
-            step_id="installations",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_INSTALL_IDS): cv.multi_select(install_options),
-                }
-            ),
-            description_placeholders={"count": str(n)},
-        )
+        return self.async_show_progress_done(next_step_id="installations")
 
     async def async_step_installations(
         self, user_input: dict[str, Any] | None = None

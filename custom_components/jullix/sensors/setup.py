@@ -14,7 +14,9 @@ from ..const import (
     OPTION_ENABLE_STATISTICS,
 )
 from ..coordinator import JullixDataUpdateCoordinator
+from .algorithm_extended import create_algorithm_extended_entities
 from .automation_helpers import create_automation_helper_entities
+from .charger_extended import create_charger_extended_entities
 from .base import JullixSensor, get_installation_snapshot
 from .battery import create_battery_entities
 from .charger import create_charger_entities
@@ -80,6 +82,9 @@ async def async_setup_entry(
         entities.extend(create_grid_entities(coordinator, install_id, install_name))
         entities.extend(create_metering_entities(coordinator, install_id, install_name))
         entities.extend(create_charger_entities(coordinator, install_id, install_name))
+        entities.extend(
+            create_charger_extended_entities(coordinator, install_id, install_name)
+        )
         entities.extend(create_plug_entities(coordinator, install_id, install_name))
 
         if pe := maybe_plug_energy_today_entity(coordinator, install_id, install_name):
@@ -107,6 +112,10 @@ async def async_setup_entry(
 
         if ae := maybe_algorithm_entity(coordinator, install_id, install_name):
             entities.append(ae)
+
+        entities.extend(
+            create_algorithm_extended_entities(coordinator, install_id, install_name)
+        )
 
         if wf := maybe_weather_forecast_entity(coordinator, install_id, install_name):
             entities.append(wf)

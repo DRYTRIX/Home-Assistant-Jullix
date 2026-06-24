@@ -55,6 +55,7 @@ This guide maps common problems to causes and fixes. Error strings below match t
 2. **Installation selection** — entities exist only for installations selected during setup (per config entry).
 3. **Reload** — after changing options, the integration reloads; wait one poll cycle.
 4. **Developer Tools → States** — search `jullix` to confirm entity IDs; use **Devices** to see everything grouped by site.
+5. **Optimizer and per-charger status/energy/event sensors** — these come from the **extended** poll (not every refresh; see [Extended polling](architecture.md#coordinator)) and are created only if the Jullix API actually returns data for that installation/charger. They may take a few extra poll cycles to appear, and won't appear at all if your account/charger doesn't expose that endpoint.
 
 ## Jullix-Direct (local) issues
 
@@ -71,7 +72,7 @@ This guide maps common problems to causes and fixes. Error strings below match t
 
 ## Services fail with “No Jullix configuration includes installation_id …”
 
-Services such as `jullix.set_charger_control` require an **`installation_id`** that belongs to **this** Home Assistant setup. Use the UUID shown in the Jullix device or in **Developer Tools → States** on any `jullix` entity (entity naming includes the installation id). The integration validates the id against configured installations and raises **`ServiceValidationError`** if it does not match ([`__init__.py`](../custom_components/jullix/__init__.py)).
+Services such as `jullix.set_charger_control` and `jullix.force_algorithm_command` require an **`installation_id`** that belongs to **this** Home Assistant setup. Use the UUID shown in the Jullix device or in **Developer Tools → States** on any `jullix` entity (entity naming includes the installation id). The integration validates the id against configured installations and raises **`ServiceValidationError`** if it does not match ([`__init__.py`](../custom_components/jullix/__init__.py)).
 
 ## Still stuck?
 

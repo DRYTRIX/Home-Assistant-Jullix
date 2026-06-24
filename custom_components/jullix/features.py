@@ -30,6 +30,9 @@ FETCH_GROUP_TIER: dict[str, FeatureTier] = {
     "tariff": FeatureTier.EXTENDED,
     "weather": FeatureTier.EXTENDED,
     "algorithm_overview": FeatureTier.EXTENDED,
+    "algorithm_extended": FeatureTier.EXTENDED,
+    "installation_meta": FeatureTier.EXTENDED,
+    "charger_extended": FeatureTier.EXTENDED,
     # Reserved for unstable endpoints:
     # "example": FeatureTier.EXPERIMENTAL,
 }

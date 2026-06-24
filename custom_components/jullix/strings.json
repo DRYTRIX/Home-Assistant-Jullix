@@ -152,6 +152,20 @@
         }
       }
     },
+    "force_algorithm_command": {
+      "name": "Force algorithm command",
+      "description": "Sends a force command to the Jullix gateway optimizer.",
+      "fields": {
+        "installation_id": {
+          "name": "Installation ID",
+          "description": "The Jullix installation ID."
+        },
+        "command": {
+          "name": "Command",
+          "description": "Optimizer command accepted by the Jullix API."
+        }
+      }
+    },
     "update_tariff": {
       "name": "Update tariff",
       "description": "Updates the energy tariff setting for an installation (e.g. single or dual tariff).",
@@ -180,6 +194,13 @@
       "battery_state_of_charge": { "name": "State of charge" },
       "battery_power": { "name": "Power" },
       "charger_power": { "name": "Power" },
+      "charger_status": { "name": "Status" },
+      "charger_energy_today": { "name": "Energy today" },
+      "charger_events": { "name": "Events today" },
+      "algorithm_settings": { "name": "Optimizer settings" },
+      "algorithm_results": { "name": "Optimization results" },
+      "algorithm_usage": { "name": "Usage model" },
+      "algorithm_pvpredict": { "name": "Solar prediction" },
       "plug_power": { "name": "Power" },
       "plug_energy_today": { "name": "Plug energy today" },
       "statistics_energy_daily": { "name": "Energy daily" },

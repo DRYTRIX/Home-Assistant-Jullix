@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Brand assets** in `custom_components/jullix/brand/` (HA 2026.3+ local brands) and **`contrib/home-assistant-brands/jullix/`** for upstream [home-assistant/brands](https://github.com/home-assistant/brands) PRs — see [docs/brands.md](docs/brands.md).
+- **Extended API wiring:** installation metadata, per-charger status/energy/events, algorithm settings/results/usage/PV predict (extended poll).
+- **Service** `jullix.force_algorithm_command` to send optimizer force commands.
+- **Docs:** [HACS default catalog checklist](docs/hacs-publish.md).
+
+### Changed
+
+- Installation **device names** use the Jullix site name from `get_installation` when available.
+- Removed unused **`OPTION_DEFAULT_INSTALL`** constant.
+
 ## [1.7.1] - 2026-03-29
 
 ### Fixed

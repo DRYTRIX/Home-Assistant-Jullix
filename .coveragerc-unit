@@ -1,0 +1,18 @@
+[run]
+source = custom_components/jullix
+omit =
+    custom_components/jullix/device_helpers.py
+    custom_components/jullix/session_history.py
+    custom_components/jullix/sensor.py
+    custom_components/jullix/binary_sensor.py
+    custom_components/jullix/switch.py
+    custom_components/jullix/number.py
+    custom_components/jullix/select.py
+    custom_components/jullix/sensors/*
+    custom_components/jullix/config_flow.py
+    custom_components/jullix/local_client.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    if TYPE_CHECKING:

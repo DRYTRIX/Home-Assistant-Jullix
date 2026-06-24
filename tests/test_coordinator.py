@@ -117,6 +117,14 @@ class _MockApiClientForFetch:
     get_weather_forecast = _async_return({"data": []})
     get_cost_hourly_price = _async_return({})
     get_chargersession_installation = _async_return({})
+    get_installation = _async_return({"data": {"name": "Test site"}})
+    get_algorithm_settings = _async_return({"data": {"enabled": True}})
+    get_algorithm_results = _async_return({"data": {"status": "ok"}})
+    get_algorithm_usage = _async_return({"data": {}})
+    get_algorithm_pvpredict = _async_return({"data": {}})
+    get_charger_status = _async_return({"data": {"status": "connected"}})
+    get_charger_events = _async_return({"data": []})
+    get_charger_energies = _async_return({"data": {"energy_kwh": 12.5}})
 
 
 @pytest.fixture
@@ -142,6 +150,81 @@ async def test_build_snapshot_returns_expected_fields(
     assert result.algorithm_overview == {"state": "ok"}
     assert result.tariff == {"tariff": "single"}
     assert result.weather_forecast == []
+    assert result.installation_meta == {"name": "Test site"}
+    assert result.algorithm_settings == {"enabled": True}
+
+
+@pytest.mark.asyncio
+@patch("homeassistant.helpers.frame.report_usage")
+async def test_build_snapshot_extended_charger_api(
+    _mock_report, mock_hass, mock_api_for_fetch
+):
+    """Extended poll fetches per-charger status, events, and energies."""
+    mock_api_for_fetch.get_chargers = AsyncMock(
+        return_value=[{"id": "mac-1", "name": "Charger 1"}]
+    )
+    coordinator = JullixDataUpdateCoordinator(
+        hass=mock_hass,
+        api_client=mock_api_for_fetch,
+        install_ids=["inst-1"],
+        enable_cost=False,
+    )
+    result = await coordinator._build_snapshot_for_install("inst-1", extended=True)
+    assert result.charger_status_by_mac["mac-1"]["data"]["status"] == "connected"
+    assert result.charger_energies_by_mac["mac-1"]["data"]["energy_kwh"] == 12.5
+    assert result.charger_events_by_mac["mac-1"]["data"] == []
+
+
+@pytest.mark.asyncio
+@patch("homeassistant.helpers.frame.report_usage")
+async def test_build_snapshot_extended_charger_api_partial_failure(
+    _mock_report, mock_hass, mock_api_for_fetch
+):
+    """A failing per-charger fetch is dropped; the other per-charger fetches still populate."""
+    mock_api_for_fetch.get_chargers = AsyncMock(
+        return_value=[{"id": "mac-1", "name": "Charger 1"}]
+    )
+    mock_api_for_fetch.get_charger_status = AsyncMock(
+        side_effect=RuntimeError("charger offline")
+    )
+    coordinator = JullixDataUpdateCoordinator(
+        hass=mock_hass,
+        api_client=mock_api_for_fetch,
+        install_ids=["inst-1"],
+        enable_cost=False,
+    )
+    result = await coordinator._build_snapshot_for_install("inst-1", extended=True)
+    assert "mac-1" not in result.charger_status_by_mac
+    assert result.charger_energies_by_mac["mac-1"]["data"]["energy_kwh"] == 12.5
+    assert result.charger_events_by_mac["mac-1"]["data"] == []
+
+
+@pytest.mark.asyncio
+@patch("homeassistant.helpers.frame.report_usage")
+async def test_build_snapshot_extended_no_chargers_skips_per_charger_fetch(
+    _mock_report, mock_hass, mock_api_for_fetch
+):
+    """No chargers means no per-charger status/events/energies fetch and empty dicts."""
+    coordinator = JullixDataUpdateCoordinator(
+        hass=mock_hass,
+        api_client=mock_api_for_fetch,
+        install_ids=["inst-1"],
+        enable_cost=False,
+    )
+    result = await coordinator._build_snapshot_for_install("inst-1", extended=True)
+    assert result.charger_status_by_mac == {}
+    assert result.charger_events_by_mac == {}
+    assert result.charger_energies_by_mac == {}
+
+
+@pytest.mark.asyncio
+@patch("homeassistant.helpers.frame.report_usage")
+async def test_installation_display_name_from_meta(_mock_report):
+    """installation_display_name uses installation_meta when present."""
+    snap = build_installation_snapshot(
+        RawInstallFetches(installation_meta={"name": "Home"})
+    )
+    assert snap.installation_display_name("uuid-1234") == "Home"
 
 
 @pytest.mark.asyncio

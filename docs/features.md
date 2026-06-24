@@ -37,6 +37,9 @@ These string keys label API capability groups inside the coordinator (not all ar
 | `tariff` | EXTENDED |
 | `weather` | EXTENDED |
 | `algorithm_overview` | EXTENDED |
+| `algorithm_extended` | EXTENDED |
+| `installation_meta` | EXTENDED |
+| `charger_extended` | EXTENDED |
 
 **EXPERIMENTAL:** The registry has no entries yet; future unstable endpoints can be added here without changing the user-facing options model.
 

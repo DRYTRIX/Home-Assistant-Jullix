@@ -283,3 +283,45 @@ async def test_update_tariff_put_path(client):
         assert req.call_args[0][0] == "PUT"
         assert "/tariff/inst-1" in req.call_args[0][1]
         assert req.call_args[1]["json"] == {"tariff": "dual"}
+
+
+@pytest.mark.asyncio
+async def test_force_algorithm_command_path(client):
+    """Test force_algorithm_command uses POST with payload."""
+    with patch.object(client, "_request", new_callable=AsyncMock) as req:
+        req.return_value = {}
+        await client.force_algorithm_command("inst-1", {"command": "refresh"})
+        req.assert_called_once()
+        assert req.call_args[0][0] == "POST"
+        assert "/algorithm/force/command/inst-1" in req.call_args[0][1]
+        assert req.call_args[1]["json"] == {"command": "refresh"}
+
+
+@pytest.mark.asyncio
+async def test_get_algorithm_settings_path(client):
+    """Test get_algorithm_settings uses correct path."""
+    with patch.object(client, "_request", new_callable=AsyncMock) as req:
+        req.return_value = {"data": {}}
+        await client.get_algorithm_settings("inst-1")
+        req.assert_called_once()
+        assert "/algorithm/settings/inst-1" in req.call_args[0][1]
+
+
+@pytest.mark.asyncio
+async def test_get_charger_events_path(client):
+    """Test get_charger_events uses correct path."""
+    with patch.object(client, "_request", new_callable=AsyncMock) as req:
+        req.return_value = {"data": []}
+        await client.get_charger_events("MAC1")
+        req.assert_called_once()
+        assert "/charger/MAC1/events" in req.call_args[0][1]
+
+
+@pytest.mark.asyncio
+async def test_get_charger_energies_path(client):
+    """Test get_charger_energies uses correct path with year/month/day."""
+    with patch.object(client, "_request", new_callable=AsyncMock) as req:
+        req.return_value = {"data": {"energy_kwh": 12.5}}
+        await client.get_charger_energies("MAC1", 2026, 6, 23)
+        req.assert_called_once()
+        assert "/charger/MAC1/energies/2026/6/23" in req.call_args[0][1]

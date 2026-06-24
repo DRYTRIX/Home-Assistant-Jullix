@@ -79,6 +79,13 @@ async def _run_user_step_with_mocked_validation(flow, installations, side_effect
         return await flow.async_step_validate_token(None)
 
 
+async def _advance_progress_done(flow, result):
+    """Follow a show_progress_done hand-off the way FlowManager would: call the
+    next step with user_input=None."""
+    assert result["type"] == FlowResultType.SHOW_PROGRESS_DONE
+    return await getattr(flow, f"async_step_{result['step_id']}")(None)
+
+
 @pytest.mark.asyncio
 async def test_step_user_no_input_shows_form():
     """async_step_user with no input shows user form."""
@@ -114,7 +121,10 @@ async def test_step_user_no_installations_shows_error():
         assert result.get("type") == FlowResultType.SHOW_PROGRESS
         task = flow.hass.async_create_task.call_args[0][0]
         await task
-        await flow.async_step_validate_token(None)
+        validate_result = await flow.async_step_validate_token(None)
+        assert validate_result["type"] == FlowResultType.SHOW_PROGRESS_DONE
+        assert validate_result["step_id"] == "user"
+        await _advance_progress_done(flow, validate_result)
     flow.async_show_form.assert_called_once()
     call_kw = flow.async_show_form.call_args[1]
     assert call_kw["errors"] == {"base": "no_installations"}
@@ -132,7 +142,8 @@ async def test_step_user_invalid_auth_shows_error():
         await flow.async_step_user({CONF_API_TOKEN: "bad"})
         task = flow.hass.async_create_task.call_args[0][0]
         await task
-        await flow.async_step_validate_token(None)
+        validate_result = await flow.async_step_validate_token(None)
+        await _advance_progress_done(flow, validate_result)
     call_kw = flow.async_show_form.call_args[1]
     assert call_kw["errors"] == {"base": "invalid_auth"}
 
@@ -149,7 +160,8 @@ async def test_step_user_validation_shows_cannot_connect():
         await flow.async_step_user({CONF_API_TOKEN: "token"})
         task = flow.hass.async_create_task.call_args[0][0]
         await task
-        await flow.async_step_validate_token(None)
+        validate_result = await flow.async_step_validate_token(None)
+        await _advance_progress_done(flow, validate_result)
     call_kw = flow.async_show_form.call_args[1]
     assert call_kw["errors"] == {"base": "cannot_connect"}
 
@@ -163,7 +175,9 @@ async def test_step_user_valid_token_multiple_goes_to_installations():
         {"id": "inst-2", "name": "Office"},
     ]
     result = await _run_user_step_with_mocked_validation(flow, installations)
-    assert result["type"] == "form"
+    assert result["type"] == FlowResultType.SHOW_PROGRESS_DONE
+    assert result["step_id"] == "installations"
+    await _advance_progress_done(flow, result)
     flow.async_show_form.assert_called_once()
     assert flow.async_show_form.call_args[1]["step_id"] == "installations"
     assert flow.async_show_form.call_args[1]["description_placeholders"] == {
@@ -177,9 +191,46 @@ async def test_step_user_single_install_skips_to_local():
     flow = _make_flow()
     installations = [{"id": "inst-1", "name": "Home"}]
     result = await _run_user_step_with_mocked_validation(flow, installations)
-    assert result["type"] == "form"
+    assert result["type"] == FlowResultType.SHOW_PROGRESS_DONE
+    assert result["step_id"] == "local"
+    assert flow._config == {
+        CONF_API_TOKEN: flow._api_token,
+        CONF_INSTALL_IDS: ["inst-1"],
+    }
+    await _advance_progress_done(flow, result)
     kw = flow.async_show_form.call_args[1]
     assert kw["step_id"] == "local"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("token_flow_error", "installations", "expected_next_step_id"),
+    [
+        ("invalid_auth", [], "user"),
+        (None, [{"id": ""}], "user"),
+        (None, [{"id": "inst-1", "name": "Home"}], "local"),
+        (None, [{"id": "inst-1"}, {"id": "inst-2"}], "installations"),
+    ],
+)
+async def test_async_step_validate_token_never_returns_form(
+    token_flow_error, installations, expected_next_step_id
+):
+    """async_step_validate_token must only ever return show_progress_done.
+
+    It is only ever reached as the resume-step of a show_progress (see
+    async_step_user). Home Assistant requires that result to be show_progress
+    or show_progress_done - returning a form directly here raises ValueError
+    inside the progress task's done-callback, which is silently swallowed
+    there and never reaches the frontend (the flow just hangs). Regression
+    test for "does not finish authenticating with the JWT token".
+    """
+    flow = _make_flow()
+    flow._token_flow_error = token_flow_error
+    flow._installations = installations
+    flow._api_token = "token"
+    result = await flow.async_step_validate_token(None)
+    assert result["type"] == FlowResultType.SHOW_PROGRESS_DONE
+    assert result["step_id"] == expected_next_step_id
 
 
 @pytest.mark.asyncio
@@ -273,6 +324,19 @@ async def test_step_local_connection_ok_creates_entry_with_local():
     assert call_args["title"] == "Jullix (2 sites)"
     assert call_args["data"][CONF_LOCAL_HOST] == "jullix.local"
     assert call_args["options"][OPTION_USE_LOCAL] is True
+
+
+def test_async_get_options_flow_constructs_handler_without_args():
+    """async_get_options_flow must not pass config_entry into the constructor.
+
+    Home Assistant 2025.12 made OptionsFlow.config_entry a read-only property
+    supplied by the base class; constructing the handler with a positional
+    config_entry argument now raises instead of being silently accepted.
+    Regression test for https://github.com/DRYTRIX/Home-Assistant-Jullix/issues/21.
+    """
+    config_entry = MagicMock()
+    handler = JullixConfigFlow.async_get_options_flow(config_entry)
+    assert isinstance(handler, JullixOptionsFlowHandler)
 
 
 @pytest.mark.asyncio

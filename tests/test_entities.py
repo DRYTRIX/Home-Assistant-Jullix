@@ -37,6 +37,10 @@ def sample_installation_snapshot():
             algorithm_overview={"state": "ok"},
             tariff={"tariff": "single"},
             weather_forecast=[],
+            charger_status_by_mac={"mac-1": {"data": {"status": "connected"}}},
+            charger_energies_by_mac={"mac-1": {"data": {"energy_kwh": 12.5}}},
+            charger_events_by_mac={"mac-1": {"data": [{"event": "plug_in"}]}},
+            algorithm_settings={"data": {"enabled": True}},
         )
     )
 
@@ -85,6 +89,10 @@ async def test_sensor_setup_creates_entities(hass_and_entry, sample_installation
     assert any(uid and "inst-1_charger" in uid for uid in unique_ids)
     assert any(uid and "connection_health" in (uid or "") for uid in unique_ids)
     assert any(uid and "insight_self_consumption" in (uid or "") for uid in unique_ids)
+    assert any(uid and "inst-1_algorithm_settings" in uid for uid in unique_ids)
+    assert any(uid and "inst-1_charger_mac-1_status" in uid for uid in unique_ids)
+    assert any(uid and "inst-1_charger_mac-1_energy_today" in uid for uid in unique_ids)
+    assert any(uid and "inst-1_charger_mac-1_events" in uid for uid in unique_ids)
 
 
 @pytest.mark.asyncio
