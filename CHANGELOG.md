@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-06-24
+
 ### Added
 
 - **Brand assets** in `custom_components/jullix/brand/` (HA 2026.3+ local brands) and **`contrib/home-assistant-brands/jullix/`** for upstream [home-assistant/brands](https://github.com/home-assistant/brands) PRs — see [docs/brands.md](docs/brands.md).
@@ -18,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Installation **device names** use the Jullix site name from `get_installation` when available.
 - Removed unused **`OPTION_DEFAULT_INSTALL`** constant.
+
+### Fixed
+
+- **Options flow ("Configure")** raised a 500 Internal Server Error on Home Assistant 2025.12+ because the options flow handler was constructed with the now-removed `config_entry` constructor argument ([#21](https://github.com/DRYTRIX/Home-Assistant-Jullix/issues/21)).
+- **Initial setup** could fail to finish validating the API token: the token-validation progress step returned a form result directly instead of handing off via `async_show_progress_done`, which Home Assistant's config flow manager rejects, silently breaking the flow.
 
 ## [1.7.1] - 2026-03-29
 
