@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.10.1] - 2026-06-25
+
+### Fixed
+
+- **Integration setup** failed on load because `async_setup()` did not accept Home Assistant's `config` argument (`TypeError: async_setup() takes 1 positional argument but 2 were given`).
+
 ## [1.10.0] - 2026-06-25
 
 ### Added
