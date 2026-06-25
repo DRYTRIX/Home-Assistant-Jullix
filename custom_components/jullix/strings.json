@@ -193,6 +193,8 @@
       "capacity_tariff": { "name": "Capacity tariff" },
       "battery_state_of_charge": { "name": "State of charge" },
       "battery_power": { "name": "Power" },
+      "battery_energy_charged": { "name": "Energy charged" },
+      "battery_energy_discharged": { "name": "Energy discharged" },
       "charger_power": { "name": "Power" },
       "charger_status": { "name": "Status" },
       "charger_energy_today": { "name": "Energy today" },

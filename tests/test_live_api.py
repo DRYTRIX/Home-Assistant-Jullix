@@ -110,6 +110,18 @@ async def test_get_statistics_energy_daily(api_client, install_id):
 
 
 @pytest.mark.asyncio
+async def test_get_history_battery_energy(api_client, install_id):
+    """Live API: get_history_battery_energy returns data for today."""
+    from datetime import date
+
+    today = date.today()
+    data = await api_client.get_history_battery_energy(
+        install_id, today.year, today.month, today.day
+    )
+    assert data is not None
+
+
+@pytest.mark.asyncio
 async def test_close_session(api_client):
     """Live API: client can close without error."""
     await api_client.close()

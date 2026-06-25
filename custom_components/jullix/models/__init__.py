@@ -1,6 +1,11 @@
 """Domain models for Jullix installation state."""
 
-from .battery import BatterySlot, parse_battery_detail
+from .battery import (
+    BatterySlot,
+    backfill_battery_slot_energy,
+    parse_battery_detail,
+    parse_battery_energy_history,
+)
 from .charger import ChargerDevice, parse_charger_control_payload, parse_chargers_list
 from .costs import CostSavingsSnapshot, CostTotalSnapshot
 from .installation import (
@@ -27,7 +32,8 @@ __all__ = [
     "JullixInstallationSnapshot",
     "merge_local_snapshot",
     "MeteringSnapshot",
-    "parse_battery_detail",
+    "backfill_battery_slot_energy",
+    "parse_battery_energy_history",
     "parse_charger_control_payload",
     "parse_chargers_list",
     "parse_plug_energy_today",

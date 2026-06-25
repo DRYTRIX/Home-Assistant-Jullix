@@ -5,7 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from typing import Any
 
-from .battery import BatterySlot, parse_battery_detail
+from .battery import (
+    BatterySlot,
+    backfill_battery_slot_energy,
+    parse_battery_detail,
+)
 from .charger import ChargerDevice, parse_charger_control_payload, parse_chargers_list
 from .costs import CostSavingsSnapshot, CostTotalSnapshot
 from .plug import PlugDevice, parse_plug_energy_today, parse_plugs_list
@@ -33,6 +37,7 @@ class RawInstallFetches:
     charger_control_by_mac: dict[str, Any] | None = None
     plugs_response: Any = None
     plug_energy_today: Any = None
+    battery_energy_history: Any = None
     cost_savings: Any = None
     cost_total: Any = None
     weather_alarm: Any = None
@@ -167,6 +172,9 @@ def build_installation_snapshot(raw: RawInstallFetches) -> JullixInstallationSna
 
     bat_detail = _unwrap(raw.detail_battery)
     battery_slots = parse_battery_detail(bat_detail)
+    battery_slots = backfill_battery_slot_energy(
+        battery_slots, raw.battery_energy_history
+    )
 
     solar_unwrapped = _unwrap(raw.detail_solar)
     solar_detail = SolarHomeSnapshot.from_solar_api(solar_unwrapped)
@@ -280,7 +288,9 @@ def merge_local_snapshot(
 
     battery_slots = platform.battery_slots
     if local_data.get("battery"):
-        battery_slots = parse_battery_detail(local_data["battery"])
+        parsed = parse_battery_detail(_unwrap(local_data["battery"]))
+        if parsed:
+            battery_slots = parsed
 
     charger_detail_rows = platform.charger_detail_rows
     if local_data.get("charger"):

@@ -31,6 +31,7 @@ from .const import (
     API_PATH_COST_HOURLY_PRICE,
     API_PATH_COST_SAVINGS,
     API_PATH_COST_TOTAL,
+    API_PATH_HISTORY_BATTERY_ENERGY,
     API_PATH_HISTORY_PLUG_ENERGY,
     API_PATH_HISTORY_PLUG_POWER,
     API_PATH_INSTALLATION,
@@ -268,6 +269,15 @@ class JullixApiClient:
     ) -> dict[str, Any]:
         """Fetch installation-level plug energy history for a day."""
         path = API_PATH_HISTORY_PLUG_ENERGY.format(
+            install_id=install_id, year=year, month=month, day=day
+        )
+        return await self._request("GET", path, optional_get=True)
+
+    async def get_history_battery_energy(
+        self, install_id: str, year: int, month: int, day: int
+    ) -> dict[str, Any]:
+        """Fetch installation-level battery energy history for a day."""
+        path = API_PATH_HISTORY_BATTERY_ENERGY.format(
             install_id=install_id, year=year, month=month, day=day
         )
         return await self._request("GET", path, optional_get=True)

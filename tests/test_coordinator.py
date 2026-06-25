@@ -67,6 +67,51 @@ def test_merge_local_snapshot_merge_solar_battery_meter():
     assert result.metering.channels[0].get("value") == 1.0
 
 
+def test_merge_local_snapshot_battery_envelope():
+    """Local EMS battery envelope is unwrapped and parsed."""
+    platform = build_installation_snapshot(RawInstallFetches(detail_battery=[]))
+    local = {
+        "battery": {
+            "data": [
+                {
+                    "name": "Pack A",
+                    "power": 0.5,
+                    "energy_charged": 100.0,
+                    "energy_discharged": 90.0,
+                    "battery": {"soc": 72.0},
+                }
+            ],
+            "status": "ok",
+        }
+    }
+    result = merge_local_snapshot(platform, local)
+    assert len(result.battery_slots) == 1
+    assert result.battery_slots[0].soc == 72.0
+    assert result.battery_slots[0].energy_charged_kwh == 100.0
+    assert result.battery_slots[0].energy_discharged_kwh == 90.0
+
+
+def test_merge_local_snapshot_invalid_battery_keeps_platform_slots():
+    """Unparseable local battery payload must not wipe cloud battery slots."""
+    platform = build_installation_snapshot(
+        RawInstallFetches(
+            detail_battery={
+                "data": [
+                    {
+                        "name": "Cloud",
+                        "power": 1.0,
+                        "battery": {"soc": 55.0},
+                    }
+                ]
+            }
+        )
+    )
+    assert len(platform.battery_slots) == 1
+    result = merge_local_snapshot(platform, {"battery": {"status": "ok"}})
+    assert len(result.battery_slots) == 1
+    assert result.battery_slots[0].soc == 55.0
+
+
 def test_merge_local_snapshot_ignores_empty_charger_list():
     """Empty local charger list does not clear existing rows."""
     platform = build_installation_snapshot(
@@ -106,6 +151,7 @@ class _MockApiClientForFetch:
     )
     get_plugs = _async_return([])
     get_history_plug_energy = _async_return({})
+    get_history_battery_energy = _async_return({})
     get_cost_savings = _async_return({"savings": 10})
     get_cost_total = _async_return({"data": {"total": 50.0}})
     get_weather_alarm = _async_return({"data": []})

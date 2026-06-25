@@ -18,6 +18,9 @@ API_PATH_PLUG_ENERGY = "/api/v1/plug/{mac}/energy/{year}/{month}/{day}"
 API_PATH_PLUG_POWER = "/api/v1/plug/{mac}/power/{year}/{month}/{day}"
 API_PATH_HISTORY_PLUG_ENERGY = "/api/v1/history/recent/{install_id}/plug/energy/{year}/{month}/{day}"
 API_PATH_HISTORY_PLUG_POWER = "/api/v1/history/recent/{install_id}/plug/power/{year}/{month}/{day}"
+API_PATH_HISTORY_BATTERY_ENERGY = (
+    "/api/v1/history/recent/{install_id}/battery/energy/{year}/{month}/{day}"
+)
 API_PATH_COST_SAVINGS = "/api/v1/cost/savings/{install_id}"
 API_PATH_COST_TOTAL = "/api/v1/cost/total/{install_id}/{year}/{month}"
 API_PATH_COST_HOURLY_PRICE = "/api/v1/cost/hourly/price/{install_id}/{year}/{month}/{day}"

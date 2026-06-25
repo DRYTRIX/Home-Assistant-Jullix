@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-06-25
+
+### Added
+
+- **Battery energy sensors** — per-battery **Energy charged** and **Energy discharged** (`device_class: energy`, `state_class: total_increasing`) for Home Assistant's Energy Dashboard, sourced from Jullix-Direct EMS and cloud battery energy history ([#21](https://github.com/DRYTRIX/Home-Assistant-Jullix/issues/21)).
+
+### Fixed
+
+- **Local EMS battery merge** — unwrap the `{"data": [...]}` envelope from `/api/ems/battery` and do not replace cloud battery slots when local parsing yields no devices.
+
 ## [1.8.0] - 2026-06-24
 
 ### Added

@@ -303,8 +303,20 @@ class JullixDataUpdateCoordinator(DataUpdateCoordinator[dict[str, JullixInstalla
                     install_id, today.year, today.month, today.day
                 )
             ),
+            self._limited(
+                self._api_client.get_history_battery_energy(
+                    install_id, today.year, today.month, today.day
+                )
+            ),
         ]
-        labels = ["power_summary", *_DETAIL_TYPES, "chargers", "plugs", "plug_energy"]
+        labels = [
+            "power_summary",
+            *_DETAIL_TYPES,
+            "chargers",
+            "plugs",
+            "plug_energy",
+            "battery_energy",
+        ]
 
         core_results = await asyncio.gather(*core_coros, return_exceptions=True)
         fetch: dict[str, Any] = {}
@@ -508,6 +520,7 @@ class JullixDataUpdateCoordinator(DataUpdateCoordinator[dict[str, JullixInstalla
             charger_control_by_mac=charger_control,
             plugs_response=fetch.get("plugs"),
             plug_energy_today=fetch.get("plug_energy"),
+            battery_energy_history=fetch.get("battery_energy"),
             cost_savings=cost_savings,
             cost_total=cost_total,
             weather_alarm=weather_alarm,

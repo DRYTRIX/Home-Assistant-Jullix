@@ -325,3 +325,13 @@ async def test_get_charger_energies_path(client):
         await client.get_charger_energies("MAC1", 2026, 6, 23)
         req.assert_called_once()
         assert "/charger/MAC1/energies/2026/6/23" in req.call_args[0][1]
+
+
+@pytest.mark.asyncio
+async def test_get_history_battery_energy_path(client):
+    """Test get_history_battery_energy uses correct path with year/month/day."""
+    with patch.object(client, "_request", new_callable=AsyncMock) as req:
+        req.return_value = {"data": []}
+        await client.get_history_battery_energy("inst-1", 2026, 6, 23)
+        req.assert_called_once()
+        assert "/history/recent/inst-1/battery/energy/2026/6/23" in req.call_args[0][1]

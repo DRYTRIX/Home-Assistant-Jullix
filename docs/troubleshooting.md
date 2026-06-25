@@ -57,6 +57,14 @@ This guide maps common problems to causes and fixes. Error strings below match t
 4. **Developer Tools → States** — search `jullix` to confirm entity IDs; use **Devices** to see everything grouped by site.
 5. **Optimizer and per-charger status/energy/event sensors** — these come from the **extended** poll (not every refresh; see [Extended polling](architecture.md#coordinator)) and are created only if the Jullix API actually returns data for that installation/charger. They may take a few extra poll cycles to appear, and won't appear at all if your account/charger doesn't expose that endpoint.
 
+### Battery energy for the Energy Dashboard
+
+- **Battery power** (instantaneous kW/W) is already exposed as **summary battery power** and per-battery **Power** sensors. These are not the same as cumulative kWh totals.
+- **Energy charged** and **Energy discharged** sensors (`device_class: energy`, `state_class: total_increasing`) are created when Jullix returns cumulative `energy_charged` / `energy_discharged` fields.
+- **Local Jullix-Direct:** set a local host during setup and enable **Merge local Jullix-Direct data when configured** (`use_local`). The local EMS endpoint `/api/ems/battery` supplies the cumulative totals ([Jullix integration FAQ](https://wiki.jullix.be/doku.php?id=nl:faq:integratie)).
+- **Cloud-only:** the integration also fetches today's battery energy history from the platform API and backfills totals when the live battery detail payload does not include them.
+- In [**Settings → Dashboards → Energy**](https://www.home-assistant.io/docs/energy/), map **Battery charged** to battery input and **Energy discharged** to battery output for your installation's battery device.
+
 ## Jullix-Direct (local) issues
 
 ### “Could not reach the local Jullix device” (`local_connection_failed`)

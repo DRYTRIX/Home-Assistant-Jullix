@@ -2,10 +2,8 @@
   "data": [
     {
       "name": "Pack A",
-      "power": 1.2,
       "energy_charged": 1523.4,
-      "energy_discharged": 1401.7,
-      "battery": { "soc": 85.0 }
+      "energy_discharged": 1401.7
     }
   ],
   "status": "ok"
