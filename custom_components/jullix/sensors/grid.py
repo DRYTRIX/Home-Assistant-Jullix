@@ -6,7 +6,7 @@ from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorStateClass,
 )
-from homeassistant.const import UnitOfPower
+from homeassistant.const import UnitOfEnergy, UnitOfPower
 
 from ..coordinator import JullixDataUpdateCoordinator
 from ..device_helpers import device_info_grid
@@ -49,6 +49,32 @@ def create_grid_entities(
         )
     )
 
+    totals = snap.energy_totals
+    if totals.grid_import_kwh is not None:
+        entities.append(
+            JullixGridEnergyImportSensor(
+                coordinator=coordinator,
+                install_id=install_id,
+                install_name=install_name,
+                unique_id=f"{install_id}_grid_energy_import",
+                name="Grid energy import",
+                device_info=grid_dev,
+                translation_key="grid_energy_import",
+            )
+        )
+    if totals.grid_export_kwh is not None:
+        entities.append(
+            JullixGridEnergyExportSensor(
+                coordinator=coordinator,
+                install_id=install_id,
+                install_name=install_name,
+                unique_id=f"{install_id}_grid_energy_export",
+                name="Grid energy export",
+                device_info=grid_dev,
+                translation_key="grid_energy_export",
+            )
+        )
+
     return entities
 
 
@@ -80,3 +106,29 @@ class JullixCaptarSensor(JullixSensor):
         if val is None:
             val = snap.power_summary.power_watts("captar")
         self._attr_native_value = val
+
+
+class JullixGridEnergyImportSensor(JullixSensor):
+    """Cumulative grid import energy (kWh)."""
+
+    _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+    _attr_device_class = SensorDeviceClass.ENERGY
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_suggested_display_precision = 2
+
+    def _update_from_snapshot(self) -> None:
+        snap = get_installation_snapshot(self.coordinator, self._install_id)
+        self._attr_native_value = snap.energy_totals.grid_import_kwh
+
+
+class JullixGridEnergyExportSensor(JullixSensor):
+    """Cumulative grid export energy (kWh)."""
+
+    _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+    _attr_device_class = SensorDeviceClass.ENERGY
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_suggested_display_precision = 2
+
+    def _update_from_snapshot(self) -> None:
+        snap = get_installation_snapshot(self.coordinator, self._install_id)
+        self._attr_native_value = snap.energy_totals.grid_export_kwh

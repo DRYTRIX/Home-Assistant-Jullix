@@ -87,12 +87,34 @@ def _build_entry_title(
     return f"Jullix ({len(names)} sites)"
 
 
+def entry_unique_id(install_ids: list[str]) -> str:
+    """Stable config-entry unique id for a set of installations."""
+    return f"jullix_{'_'.join(sorted(install_ids))}"
+
+
+def install_ids_already_configured(
+    hass: HomeAssistant,
+    install_ids: list[str],
+    *,
+    skip_entry_id: str | None = None,
+) -> bool:
+    """Return True when any installation id is already on another entry."""
+    wanted = set(install_ids)
+    for entry in hass.config_entries.async_entries(DOMAIN):
+        if skip_entry_id and entry.entry_id == skip_entry_id:
+            continue
+        existing = set(entry.data.get(CONF_INSTALL_IDS, []))
+        if existing & wanted:
+            return True
+    return False
+
+
 def _default_options() -> dict[str, Any]:
     """Options for new config entries."""
     return {
         OPTION_SCAN_INTERVAL: DEFAULT_SCAN_INTERVAL,
         OPTION_ENABLE_COST: False,
-        OPTION_ENABLE_STATISTICS: False,
+        OPTION_ENABLE_STATISTICS: True,
         OPTION_ENABLE_CHARGER_CONTROL: True,
         OPTION_ENABLE_PLUG_CONTROL: True,
         OPTION_USE_LOCAL: False,
@@ -275,13 +297,19 @@ class JullixConfigFlow(ConfigFlow, domain=DOMAIN):
             title = _build_entry_title(
                 data[CONF_INSTALL_IDS], self._installations
             )
+            install_ids = data[CONF_INSTALL_IDS]
+
+            await self.async_set_unique_id(entry_unique_id(install_ids))
+            self._abort_if_unique_id_configured()
+            if install_ids_already_configured(self.hass, install_ids):
+                return self.async_abort(reason="already_configured")
 
             if not local_host:
                 return self.async_create_entry(
                     title=title,
                     data={
                         CONF_API_TOKEN: data[CONF_API_TOKEN],
-                        CONF_INSTALL_IDS: data[CONF_INSTALL_IDS],
+                        CONF_INSTALL_IDS: install_ids,
                         CONF_LOCAL_HOST: None,
                     },
                     options=_default_options(),
@@ -308,7 +336,7 @@ class JullixConfigFlow(ConfigFlow, domain=DOMAIN):
                 title=title,
                 data={
                     CONF_API_TOKEN: data[CONF_API_TOKEN],
-                    CONF_INSTALL_IDS: data[CONF_INSTALL_IDS],
+                    CONF_INSTALL_IDS: install_ids,
                     CONF_LOCAL_HOST: local_host,
                 },
                 options={**_default_options(), OPTION_USE_LOCAL: True},

@@ -34,7 +34,21 @@ Brand PNGs were generated from the Jullix portal favicon. To refresh:
 
 ```bash
 curl -sL "https://mijn.jullix.be/favicon.ico" -o /tmp/jullix-favicon.ico
-# Then run the Pillow resize script in the integration repo (see git history) or replace files manually.
+python3 - <<'PY'
+from pathlib import Path
+from PIL import Image
+
+src = Path("/tmp/jullix-favicon.ico")
+out = Path("custom_components/jullix/brand")
+out.mkdir(parents=True, exist_ok=True)
+img = Image.open(src).convert("RGBA")
+for name, size in (("icon.png", 256), ("logo.png", 512)):
+    img.resize((size, size), Image.Resampling.LANCZOS).save(out / name)
+print("Wrote", out / "icon.png", "and", out / "logo.png")
+PY
+# Copy the same files into contrib/home-assistant-brands/jullix/ for upstream PRs.
 ```
 
-Replace `docs/screenshots/*.png` with real UI captures when available; placeholders do not affect brands or analytics.
+Requires Pillow (`pip install Pillow`). Adjust sizes if [home-assistant/brands](https://github.com/home-assistant/brands) guidelines change.
+
+Replace `docs/screenshots/*.png` with real UI captures when available; see [screenshots/README.md](screenshots/README.md).

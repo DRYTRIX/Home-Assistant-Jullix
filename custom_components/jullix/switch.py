@@ -15,6 +15,7 @@ from .const import DOMAIN, OPTION_ENABLE_CHARGER_CONTROL, OPTION_ENABLE_PLUG_CON
 from .device_helpers import device_info_charger, device_info_plug, device_info_hub
 from .coordinator import JullixDataUpdateCoordinator
 from .sensors.base import get_installation_snapshot
+from ..models import JullixInstallationSnapshot
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,6 +37,7 @@ async def async_setup_entry(
 
     enable_charger = options.get(OPTION_ENABLE_CHARGER_CONTROL, True)
     enable_plug = options.get(OPTION_ENABLE_PLUG_CONTROL, True)
+    entity_discovery = data.get("entity_discovery")
 
     entities: list[SwitchEntity] = []
     for install_id in install_ids:
@@ -96,7 +98,75 @@ async def async_setup_entry(
                     )
                 )
 
+    if entity_discovery:
+        entity_discovery.register_platform(
+            "switch",
+            lambda iid, snap: _discovered_switch_entities(
+                coordinator, api_client, iid, snap, enable_charger, enable_plug
+            ),
+            async_add_entities,
+        )
+
     async_add_entities(entities)
+
+
+def _discovered_switch_entities(
+    coordinator: JullixDataUpdateCoordinator,
+    api_client: Any,
+    install_id: str,
+    snap: JullixInstallationSnapshot,
+    enable_charger: bool,
+    enable_plug: bool,
+) -> list[SwitchEntity]:
+    install_name = snap.installation_display_name(install_id)
+    entities: list[SwitchEntity] = []
+    if enable_charger:
+        for i, ch in enumerate(snap.chargers):
+            model = ch.raw.get("model") or ch.raw.get("type")
+            if model is not None:
+                model = str(model)
+            ch_dev = device_info_charger(
+                install_id, install_name, ch.mac, ch.display_name, model=str(model) if model else None
+            )
+            entities.append(
+                JullixChargerSwitch(
+                    coordinator=coordinator,
+                    api_client=api_client,
+                    install_id=install_id,
+                    install_name=install_name,
+                    charger_index=i,
+                    charger_mac=ch.mac,
+                    unique_id=f"{install_id}_charger_{ch.mac}_switch",
+                    name="Charging",
+                    device_info=ch_dev,
+                    translation_key="charger_charging",
+                )
+            )
+    if enable_plug:
+        for i, plug in enumerate(snap.plugs):
+            model = plug.raw.get("model") or plug.raw.get("type")
+            plug_dev = device_info_plug(
+                install_id,
+                install_name,
+                plug.mac,
+                plug.display_name,
+                model=str(model) if model else None,
+            )
+            entities.append(
+                JullixPlugSwitch(
+                    coordinator=coordinator,
+                    api_client=api_client,
+                    install_id=install_id,
+                    install_name=install_name,
+                    plug_index=i,
+                    plug_mac=plug.mac,
+                    unique_id=f"{install_id}_plug_{plug.mac}_switch",
+                    name="Switch",
+                    device_info=plug_dev,
+                    translation_key="plug_switch",
+                )
+            )
+    return entities
 
 
 class JullixSwitch(CoordinatorEntity[JullixDataUpdateCoordinator], SwitchEntity):

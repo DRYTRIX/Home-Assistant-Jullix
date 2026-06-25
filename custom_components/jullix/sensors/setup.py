@@ -8,9 +8,11 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from ..const import (
+    DOMAIN,
     OPTION_ENABLE_CHARGER_SESSION,
     OPTION_ENABLE_COST,
     OPTION_ENABLE_INSIGHTS,
+    OPTION_ENABLE_SESSION_HISTORY,
     OPTION_ENABLE_STATISTICS,
 )
 from ..coordinator import JullixDataUpdateCoordinator
@@ -37,6 +39,32 @@ from .energy import (
 )
 from .grid import create_grid_entities
 from .insights import create_insight_entities
+from .session_history import create_session_history_entities
+from ..models import JullixInstallationSnapshot
+
+
+def create_discovered_sensor_entities(
+    coordinator: JullixDataUpdateCoordinator,
+    install_id: str,
+    snap: JullixInstallationSnapshot,
+) -> list[JullixSensor]:
+    """Entity factory for dynamically discovered chargers/plugs."""
+    install_name = snap.installation_display_name(install_id)
+    entities: list[JullixSensor] = []
+    entities.extend(
+        create_charger_entities(
+            coordinator, install_id, install_name, snap=snap
+        )
+    )
+    entities.extend(
+        create_charger_extended_entities(
+            coordinator, install_id, install_name, snap=snap
+        )
+    )
+    entities.extend(
+        create_plug_entities(coordinator, install_id, install_name, snap=snap)
+    )
+    return entities
 
 
 async def async_setup_entry(
@@ -58,6 +86,9 @@ async def async_setup_entry(
     enable_statistics = options.get(OPTION_ENABLE_STATISTICS, False)
     enable_insights = options.get(OPTION_ENABLE_INSIGHTS, True)
     enable_charger_session = options.get(OPTION_ENABLE_CHARGER_SESSION, True)
+    enable_session_history = options.get(OPTION_ENABLE_SESSION_HISTORY, False)
+    session_hist = data.get("session_history")
+    entity_discovery = data.get("entity_discovery")
 
     entities: list[JullixSensor] = []
     for install_id in install_ids:
@@ -101,6 +132,13 @@ async def async_setup_entry(
                 create_charger_intel_entities(coordinator, install_id, install_name)
             )
 
+        if enable_session_history:
+            entities.extend(
+                create_session_history_entities(
+                    coordinator, install_id, install_name, session_hist
+                )
+            )
+
         if wa := maybe_weather_alarm_entity(coordinator, install_id, install_name):
             entities.append(wa)
 
@@ -119,5 +157,14 @@ async def async_setup_entry(
 
         if wf := maybe_weather_forecast_entity(coordinator, install_id, install_name):
             entities.append(wf)
+
+    if entity_discovery:
+        entity_discovery.register_platform(
+            "sensor",
+            lambda iid, snap: create_discovered_sensor_entities(
+                coordinator, iid, snap
+            ),
+            async_add_entities,
+        )
 
     async_add_entities(entities)

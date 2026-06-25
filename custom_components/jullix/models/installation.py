@@ -10,6 +10,7 @@ from .battery import (
     backfill_battery_slot_energy,
     parse_battery_detail,
 )
+from .energy_totals import EnergyTotalsSnapshot, build_energy_totals
 from .charger import ChargerDevice, parse_charger_control_payload, parse_chargers_list
 from .costs import CostSavingsSnapshot, CostTotalSnapshot
 from .plug import PlugDevice, parse_plug_energy_today, parse_plugs_list
@@ -53,6 +54,7 @@ class RawInstallFetches:
     charger_status_by_mac: dict[str, Any] | None = None
     charger_events_by_mac: dict[str, Any] | None = None
     charger_energies_by_mac: dict[str, Any] | None = None
+    plug_energy_by_mac: dict[str, Any] | None = None
     algorithm_settings: Any = None
     algorithm_results: Any = None
     algorithm_usage: Any = None
@@ -96,6 +98,7 @@ class JullixInstallationSnapshot:
     algorithm_results: Any
     algorithm_usage: Any
     algorithm_pvpredict: Any
+    energy_totals: EnergyTotalsSnapshot
 
     def installation_display_name(self, install_id: str) -> str:
         meta = self.installation_meta
@@ -232,6 +235,15 @@ def build_installation_snapshot(raw: RawInstallFetches) -> JullixInstallationSna
     algo_usage = _unwrap(raw.algorithm_usage)
     algo_pvpredict = _unwrap(raw.algorithm_pvpredict)
 
+    energy_totals = build_energy_totals(
+        metering_src=metering_src,
+        metering_channels=metering.channels,
+        statistics_daily=stats_d,
+        charger_energies_by_mac=dict(raw.charger_energies_by_mac or {}),
+        plug_energy_by_mac=dict(raw.plug_energy_by_mac or {}),
+        solar_detail_raw=solar_detail.raw,
+    )
+
     return JullixInstallationSnapshot(
         power_summary=ps,
         grid_detail=grid_detail,
@@ -266,6 +278,7 @@ def build_installation_snapshot(raw: RawInstallFetches) -> JullixInstallationSna
         algorithm_results=algo_results,
         algorithm_usage=algo_usage,
         algorithm_pvpredict=algo_pvpredict,
+        energy_totals=energy_totals,
     )
 
 
@@ -308,6 +321,16 @@ def merge_local_snapshot(
         elif isinstance(loc, dict):
             plug_detail_rows = (loc,)
 
+    energy_totals = build_energy_totals(
+        metering_src=metering_src,
+        metering_channels=metering.channels,
+        statistics_daily=platform.statistics_energy_daily,
+        charger_energies_by_mac=platform.charger_energies_by_mac,
+        plug_energy_by_mac={},
+        solar_detail_raw=solar.raw,
+        local_meter_solar=local_data,
+    )
+
     return replace(
         platform,
         metering=metering,
@@ -316,4 +339,5 @@ def merge_local_snapshot(
         battery_slots=battery_slots,
         charger_detail_rows=charger_detail_rows,
         plug_detail_rows=plug_detail_rows,
+        energy_totals=energy_totals,
     )

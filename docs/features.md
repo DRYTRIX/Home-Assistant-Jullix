@@ -30,6 +30,8 @@ These string keys label API capability groups inside the coordinator (not all ar
 | `chargers_plugs` | CORE |
 | `charger_control` | CORE |
 | `plug_energy_history` | CORE |
+| `plug_energy_per_device` | EXTENDED |
+| `battery_energy_history` | CORE |
 | `cost` | EXTENDED |
 | `cost_hourly_price` | EXTENDED |
 | `chargersession` | EXTENDED |
@@ -55,9 +57,10 @@ Integration **options** ( **Settings → Devices & services → Jullix → Confi
 | **Charge session and suggestion sensors** | When on, charger session fetches run on extended ticks and related entities are created. |
 | **Cost and savings** + hourly price | Enables tariff helper sensors and peak tariff binary sensor; hourly price data is tied to extended cost/tariff fetches. |
 
-**Always-on core behavior** (subject to having data from Jullix): power summary, actual details, chargers/plugs listing, plug energy history path used for installation plug energy today, and diagnostics.
+**Always-on core behavior** (subject to having data from Jullix): power summary, actual details, chargers/plugs listing, plug energy history path used for installation plug energy today, battery energy history (cloud backfill for cumulative charged/discharged when live detail omits them), and diagnostics.
 
 ## Documentation for end users
 
 - For setup and a feature list aimed at installers, see the [README](../README.md) **Features** section (Core / Advanced / Experimental).
+- For entity categories and option gating, see [entities.md](entities.md).
 - For architecture and data flow, see [Architecture](architecture.md).

@@ -9,6 +9,7 @@ from homeassistant.const import UnitOfEnergy
 
 from ..coordinator import JullixDataUpdateCoordinator
 from ..device_helpers import device_info_charger
+from ..models import JullixInstallationSnapshot
 from ..models.util import safe_float, unwrap_data
 from .base import JullixSensor, get_installation_snapshot
 
@@ -61,9 +62,11 @@ def create_charger_extended_entities(
     coordinator: JullixDataUpdateCoordinator,
     install_id: str,
     install_name: str,
+    *,
+    snap: JullixInstallationSnapshot | None = None,
 ) -> list[JullixSensor]:
     """Status, today energy, and event count per charger when extended API data exists."""
-    snap = get_installation_snapshot(coordinator, install_id)
+    snap = snap or get_installation_snapshot(coordinator, install_id)
     entities: list[JullixSensor] = []
     for ch in snap.chargers:
         mac = ch.mac
@@ -101,6 +104,20 @@ def create_charger_extended_entities(
                     name="Energy today",
                     device_info=ch_dev,
                     translation_key="charger_energy_today",
+                )
+            )
+        cumulative = snap.energy_totals.charger_energy_kwh_by_mac.get(mac)
+        if cumulative is not None:
+            entities.append(
+                JullixChargerEnergyCumulativeSensor(
+                    coordinator=coordinator,
+                    install_id=install_id,
+                    install_name=install_name,
+                    charger_mac=mac,
+                    unique_id=f"{install_id}_charger_{mac}_energy_total",
+                    name="Energy total",
+                    device_info=ch_dev,
+                    translation_key="charger_energy_total",
                 )
             )
         if mac in snap.charger_events_by_mac:
@@ -182,6 +199,41 @@ class JullixChargerEnergyTodaySensor(JullixSensor):
         snap = get_installation_snapshot(self.coordinator, self._install_id)
         payload = snap.charger_energies_by_mac.get(self._charger_mac)
         self._attr_native_value = _charger_energy_kwh(payload)
+
+
+class JullixChargerEnergyCumulativeSensor(JullixSensor):
+    """Charger cumulative energy (kWh) when API provides lifetime totals."""
+
+    _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+    _attr_device_class = SensorDeviceClass.ENERGY
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_suggested_display_precision = 3
+
+    def __init__(
+        self,
+        coordinator: JullixDataUpdateCoordinator,
+        install_id: str,
+        install_name: str,
+        charger_mac: str,
+        unique_id: str,
+        name: str,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(
+            coordinator=coordinator,
+            install_id=install_id,
+            install_name=install_name,
+            unique_id=unique_id,
+            name=name,
+            **kwargs,
+        )
+        self._charger_mac = charger_mac
+
+    def _update_from_snapshot(self) -> None:
+        snap = get_installation_snapshot(self.coordinator, self._install_id)
+        self._attr_native_value = snap.energy_totals.charger_energy_kwh_by_mac.get(
+            self._charger_mac
+        )
 
 
 class JullixChargerEventsSensor(JullixSensor):

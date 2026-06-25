@@ -1,5 +1,7 @@
 # Contributing to Home Assistant Jullix
 
+Thank you for contributing. This file covers environment setup and how to submit changes. For adding sensors, extending the API client, and project structure, continue to [docs/development.md](docs/development.md).
+
 ## Development setup
 
 1. Clone the repo and open it in your editor.
@@ -13,6 +15,12 @@
    - **CI / quick run** (no Home Assistant): `pip install -r requirements-test-ci.txt` — config flow and entity tests are skipped.
    - **Full tests** (including config flow and entity tests): `pip install -r requirements-test.txt`
 
+### Home Assistant version requirements
+
+- **Minimum supported** Home Assistant release for end users: **2024.1** (see [README.md](README.md)).
+- **CI** installs `homeassistant>=2024.12.0` for config-flow and entity tests (`.github/workflows/test.yml`).
+- **Full local test stack** (`requirements-test.txt`) may pin a newer Home Assistant (e.g. `>=2026.6.4`) to catch compatibility issues during development. That pin is a test floor, not a raised user minimum.
+
 ## Running tests
 
 From the repo root:
@@ -21,9 +29,11 @@ From the repo root:
 python -m pytest tests/ -v --tb=short
 ```
 
+See [tests/README.md](tests/README.md) for per-test-file coverage, CI jobs, API fixtures, and live API secrets.
+
 - **Unit tests** (API, coordinator, sensor helpers, services, switch helpers) run with mocked Home Assistant. No secrets required.
-- **Config flow** and **entity platform** tests are skipped when Home Assistant is not installed; install `homeassistant>=2024.1.0` (e.g. via `requirements-test.txt`) to run them.
-- **Live API tests** (`tests/test_live_api.py`) are skipped unless environment variables are set (see below).
+- **Config flow** and **entity platform** tests require a real Home Assistant install from `requirements-test.txt`.
+- **Live API tests** (`tests/test_live_api.py`) are skipped unless environment variables are set (see [tests/README.md](tests/README.md)).
 
 ### Live API tests (optional)
 
@@ -41,6 +51,10 @@ python -m pytest tests/test_live_api.py -v
 ```
 
 In GitHub Actions, add these as repository secrets (**Settings → Secrets and variables → Actions**) so the workflow can run the live API job when desired.
+
+## Translations
+
+Only English (`custom_components/jullix/translations/en.json`) is maintained today. New locale contributions are welcome: copy `strings.json` structure into `translations/<lang>.json` and open a PR.
 
 ## Code style
 

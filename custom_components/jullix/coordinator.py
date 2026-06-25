@@ -33,6 +33,7 @@ from .models import (
     merge_local_snapshot,
 )
 from .models.charger import parse_chargers_list
+from .models.plug import parse_plugs_list
 from .runtime_state import InstallEdgeState, InstallRuntimeMetrics
 
 _LOGGER = logging.getLogger(__name__)
@@ -89,10 +90,25 @@ class JullixDataUpdateCoordinator(DataUpdateCoordinator[dict[str, JullixInstalla
         self._sem = asyncio.Semaphore(_FETCH_CONCURRENCY)
         self._refresh_seq = 0
         self._last_good: dict[str, JullixInstallationSnapshot] = {}
+        self._local_merge_failed = False
+        self._entry_id: str | None = None
+        self._repairs: Any = None
+        self.entity_discovery: Any = None
         if self._use_local and local_host:
             from .local_client import JullixLocalClient
 
             self._local_client = JullixLocalClient(local_host)
+
+    def attach_entry_context(
+        self,
+        entry_id: str,
+        repairs_manager: Any,
+        entity_discovery: Any,
+    ) -> None:
+        """Bind config-entry scoped helpers after coordinator creation."""
+        self._entry_id = entry_id
+        self._repairs = repairs_manager
+        self.entity_discovery = entity_discovery
 
     async def _limited(self, coro: Coroutine[Any, Any, Any]) -> Any:
         async with self._sem:
@@ -110,6 +126,7 @@ class JullixDataUpdateCoordinator(DataUpdateCoordinator[dict[str, JullixInstalla
 
         result: dict[str, JullixInstallationSnapshot] = {}
         self.last_installation_errors.clear()
+        self._local_merge_failed = False
 
         for install_id in self._install_ids:
             t0 = time.perf_counter()
@@ -117,13 +134,19 @@ class JullixDataUpdateCoordinator(DataUpdateCoordinator[dict[str, JullixInstalla
             fresh_ok = False
             try:
                 snap = await self._build_snapshot_for_install(install_id, extended)
-                if self._local_client and self._install_ids and install_id == self._install_ids[0]:
-                    try:
-                        local_data = await self._local_client.get_ems_data()
-                        if local_data:
-                            snap = merge_local_snapshot(snap, local_data)
-                    except Exception as exc:
-                        _LOGGER.debug("Local Jullix-Direct merge failed: %s", exc)
+                if self._local_client and install_id in self._install_ids:
+                    merge_local = (
+                        len(self._install_ids) == 1
+                        or install_id == self._install_ids[0]
+                    )
+                    if merge_local:
+                        try:
+                            local_data = await self._local_client.get_ems_data()
+                            if local_data:
+                                snap = merge_local_snapshot(snap, local_data)
+                        except Exception as exc:
+                            self._local_merge_failed = True
+                            _LOGGER.debug("Local Jullix-Direct merge failed: %s", exc)
 
                 prev = self._last_good.get(install_id)
                 if prev and not extended:
@@ -209,6 +232,17 @@ class JullixDataUpdateCoordinator(DataUpdateCoordinator[dict[str, JullixInstalla
                         )
                     )
 
+        if self._repairs:
+            self._repairs.async_update(
+                install_errors=dict(self.last_installation_errors),
+                use_local=bool(self._use_local),
+                local_merge_failed=self._local_merge_failed,
+            )
+
+        if self.entity_discovery:
+            for iid, snap in result.items():
+                self.entity_discovery.async_process_snapshot(iid, snap)
+
         return result
 
     def _apply_adaptive_update_interval(
@@ -271,6 +305,7 @@ class JullixDataUpdateCoordinator(DataUpdateCoordinator[dict[str, JullixInstalla
             algorithm_results=prev.algorithm_results,
             algorithm_usage=prev.algorithm_usage,
             algorithm_pvpredict=prev.algorithm_pvpredict,
+            energy_totals=prev.energy_totals,
         )
 
     async def _build_snapshot_for_install(
@@ -364,6 +399,7 @@ class JullixDataUpdateCoordinator(DataUpdateCoordinator[dict[str, JullixInstalla
         charger_status_by_mac: dict[str, Any] = {}
         charger_events_by_mac: dict[str, Any] = {}
         charger_energies_by_mac: dict[str, Any] = {}
+        plug_energy_by_mac: dict[str, Any] = {}
         algorithm_settings = algorithm_results = None
         algorithm_usage = algorithm_pvpredict = None
 
@@ -507,6 +543,23 @@ class JullixDataUpdateCoordinator(DataUpdateCoordinator[dict[str, JullixInstalla
                     if not isinstance(en, Exception) and en:
                         charger_energies_by_mac[d.mac] = en
 
+            plugs_for_energy = parse_plugs_list(fetch.get("plugs"))
+            if plugs_for_energy:
+                plug_energy_tasks = [
+                    self._limited(
+                        self._api_client.get_plug_energy(
+                            p.mac, today.year, today.month, today.day
+                        )
+                    )
+                    for p in plugs_for_energy
+                ]
+                plug_energy_results = await asyncio.gather(
+                    *plug_energy_tasks, return_exceptions=True
+                )
+                for plug_dev, pe_res in zip(plugs_for_energy, plug_energy_results):
+                    if not isinstance(pe_res, Exception) and pe_res:
+                        plug_energy_by_mac[plug_dev.mac] = pe_res
+
         return RawInstallFetches(
             power_summary=fetch.get("power_summary"),
             detail_battery=fetch.get("battery"),
@@ -536,6 +589,7 @@ class JullixDataUpdateCoordinator(DataUpdateCoordinator[dict[str, JullixInstalla
             charger_status_by_mac=charger_status_by_mac,
             charger_events_by_mac=charger_events_by_mac,
             charger_energies_by_mac=charger_energies_by_mac,
+            plug_energy_by_mac=plug_energy_by_mac,
             algorithm_settings=algorithm_settings,
             algorithm_results=algorithm_results,
             algorithm_usage=algorithm_usage,

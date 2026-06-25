@@ -24,6 +24,7 @@ The integration is **cloud-first** (`iot_class: cloud_polling` in `manifest.json
 - **Extended polling:** Not every API group runs on every refresh. “Extended” groups (cost, statistics, tariff, weather, algorithm, charger session, and related) run when [`run_extended_this_refresh`](../custom_components/jullix/features.py) is true—by default every 3rd refresh (`EXTENDED_POLL_INTERVAL`). See [Feature tiers](features.md). This group also fetches installation metadata (used for the device display name), the extended algorithm endpoints (settings, results, usage, PV predict), and per-charger status/events/energies (keyed by MAC in `charger_status_by_mac`, `charger_events_by_mac`, `charger_energies_by_mac`).
 - **Adaptive polling:** When enabled, the coordinator can shorten the update interval while chargers are active or grid/battery power is high (`ADAPTIVE_FAST_POLL_SECONDS`, thresholds in `const.py`).
 - **Jullix-Direct:** If a local host was configured and **Merge local Jullix-Direct data** is on, the coordinator instantiates **`JullixLocalClient`** and merges local EMS data with cloud snapshots (`merge_local_snapshot`).
+- **Battery cumulative energy:** Per-battery **Energy charged** and **Energy discharged** sensors (`state_class: total_increasing`) read from [`models/battery.py`](../custom_components/jullix/models/battery.py). Live values come from battery detail or local EMS `/api/ems/battery`; when cloud detail omits totals, the coordinator fetches today's **`battery_energy_history`** (CORE tier) and backfills from [`API_PATH_HISTORY_BATTERY_ENERGY`](../custom_components/jullix/const.py). Entities are created in [`sensors/battery.py`](../custom_components/jullix/sensors/battery.py).
 - **Events:** After a successful update, [`events.detect_and_fire_events`](../custom_components/jullix/events.py) compares successive snapshots and may fire **`jullix_event`** on meaningful transitions (charger start/stop, battery thresholds, grid heuristics).
 - **Auth callback:** Optional `on_auth_error` can trigger reauthentication flow when the API returns auth failures.
 
@@ -81,5 +82,7 @@ flowchart LR
 ## Related reading
 
 - [Feature tiers and polling](features.md)
+- [Entities reference](entities.md)
+- [Platform API mapping](api.md)
 - [Troubleshooting](troubleshooting.md)
 - [Development guide](development.md)

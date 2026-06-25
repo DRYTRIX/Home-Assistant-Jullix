@@ -12,6 +12,7 @@ from homeassistant.const import UnitOfPower
 
 from ..coordinator import JullixDataUpdateCoordinator
 from ..device_helpers import device_info_charger
+from ..models import JullixInstallationSnapshot
 from .base import JullixSensor, get_installation_snapshot
 
 
@@ -19,8 +20,10 @@ def create_charger_entities(
     coordinator: JullixDataUpdateCoordinator,
     install_id: str,
     install_name: str,
+    *,
+    snap: JullixInstallationSnapshot | None = None,
 ) -> list[JullixSensor]:
-    snap = get_installation_snapshot(coordinator, install_id)
+    snap = snap or get_installation_snapshot(coordinator, install_id)
     entities: list[JullixSensor] = []
     for ch in snap.chargers:
         model = ch.raw.get("model") or ch.raw.get("type")

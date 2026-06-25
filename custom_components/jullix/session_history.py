@@ -53,3 +53,11 @@ class SessionHistoryRecorder:
         self._data["sessions"] = sessions[-50:]
         await self._store.async_save(self._data)
         _LOGGER.debug("Session history appended install=%s session=%s", install_id, session_id)
+
+    def last_session_for(self, install_id: str) -> dict[str, Any] | None:
+        """Return the most recent stored session for an installation."""
+        sessions: list[dict[str, Any]] = list(self._data.get("sessions", []))
+        for row in reversed(sessions):
+            if row.get("installation_id") == install_id:
+                return row
+        return None

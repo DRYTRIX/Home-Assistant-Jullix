@@ -16,6 +16,7 @@ from .const import DOMAIN, OPTION_ENABLE_CHARGER_CONTROL
 from .device_helpers import device_info_charger
 from .coordinator import JullixDataUpdateCoordinator
 from .sensors.base import get_installation_snapshot
+from ..models import JullixInstallationSnapshot
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -40,6 +41,7 @@ async def async_setup_entry(
     install_ids: list[str] = data["install_ids"]
     options = entry.options or {}
     enable_charger = options.get(OPTION_ENABLE_CHARGER_CONTROL, True)
+    entity_discovery = data.get("entity_discovery")
 
     entities: list[NumberEntity] = []
     for install_id in install_ids:
@@ -75,7 +77,53 @@ async def async_setup_entry(
                 )
             )
 
+    if entity_discovery:
+        entity_discovery.register_platform(
+            "number",
+            lambda iid, snap: _discovered_number_entities(
+                coordinator, api_client, iid, snap, enable_charger
+            ),
+            async_add_entities,
+        )
+
     async_add_entities(entities)
+
+
+def _discovered_number_entities(
+    coordinator: JullixDataUpdateCoordinator,
+    api_client: Any,
+    install_id: str,
+    snap: JullixInstallationSnapshot,
+    enable_charger: bool,
+) -> list[NumberEntity]:
+    if not enable_charger:
+        return []
+    install_name = snap.installation_display_name(install_id)
+    entities: list[NumberEntity] = []
+    for i, ch in enumerate(snap.chargers):
+        model = ch.raw.get("model") or ch.raw.get("type")
+        ch_dev = device_info_charger(
+            install_id,
+            install_name,
+            ch.mac,
+            ch.display_name,
+            model=str(model) if model else None,
+        )
+        entities.append(
+            JullixChargerMaxPowerNumber(
+                coordinator=coordinator,
+                api_client=api_client,
+                install_id=install_id,
+                install_name=install_name,
+                charger_index=i,
+                charger_mac=ch.mac,
+                unique_id=f"{install_id}_charger_{ch.mac}_max_power",
+                name="Max power",
+                device_info=ch_dev,
+                translation_key="charger_max_power",
+            )
+        )
+    return entities
 
 
 class JullixChargerMaxPowerNumber(
@@ -122,9 +170,8 @@ class JullixChargerMaxPowerNumber(
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        install_data = self.coordinator.data.get(self._install_id) or {}
-        controls = install_data.get("charger_control") or {}
-        ctrl = controls.get(self._charger_mac)
+        snap = get_installation_snapshot(self.coordinator, self._install_id)
+        ctrl = snap.charger_control.get(self._charger_mac)
         val = None
         if isinstance(ctrl, dict):
             config = ctrl.get("config", ctrl)

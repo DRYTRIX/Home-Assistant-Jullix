@@ -1,0 +1,42 @@
+blueprint:
+  name: Jullix grid outage notification
+  description: Send a notification when Jullix detects a grid outage event.
+  domain: automation
+  source_url: https://github.com/DRYTRIX/Home-Assistant-Jullix/blob/main/blueprints/automation/jullix/notify_grid_outage.yaml
+  input:
+    notify_service:
+      name: Notification service
+      description: "e.g. notify.mobile_app_phone"
+      selector:
+        text:
+    installation_id:
+      name: Installation ID (optional)
+      description: Leave empty to match any Jullix installation.
+      default: ""
+      selector:
+        text:
+
+trigger:
+  - platform: event
+    event_type: jullix_event
+    event_data:
+      type: grid_outage
+
+condition: []
+
+action:
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ installation_id == '' or trigger.event.data.installation_id == installation_id }}"
+        sequence:
+          - service: "{{ notify_service }}"
+            data:
+              title: "Grid outage detected"
+              message: "Jullix reported a grid outage for installation {{ trigger.event.data.installation_id }}."
+
+mode: single
+
+variables:
+  installation_id: !input installation_id
+  notify_service: !input notify_service

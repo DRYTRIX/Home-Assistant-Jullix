@@ -137,6 +137,25 @@ def parse_battery_energy_history(raw: Any) -> tuple[float | None, float | None]:
     return None, None
 
 
+def _history_item_for_slot(
+    slot: BatterySlot, history_items: list[Any]
+) -> dict[str, Any] | None:
+    """Match a history row to a battery slot by localid or id."""
+    for item in history_items:
+        if not isinstance(item, dict):
+            continue
+        bat = item.get("battery")
+        if not isinstance(bat, dict):
+            bat = item
+        item_localid = bat.get("localid") or item.get("localid")
+        item_id = item.get("id") or bat.get("id")
+        if slot.localid and item_localid and str(slot.localid) == str(item_localid):
+            return item
+        if slot.id_value and item_id and str(slot.id_value) == str(item_id):
+            return item
+    return None
+
+
 def backfill_battery_slot_energy(
     slots: tuple[BatterySlot, ...], history_raw: Any
 ) -> tuple[BatterySlot, ...]:
@@ -145,9 +164,12 @@ def backfill_battery_slot_energy(
         return slots
 
     data = unwrap_data(history_raw)
-    if isinstance(data, list) and len(data) == len(slots):
+    if isinstance(data, list) and data:
         updated: list[BatterySlot] = []
-        for slot, item in zip(slots, data):
+        for slot in slots:
+            item = _history_item_for_slot(slot, data)
+            if item is None and len(data) == len(slots):
+                item = data[slot.index] if isinstance(data[slot.index], dict) else None
             if not isinstance(item, dict):
                 updated.append(slot)
                 continue
@@ -163,7 +185,11 @@ def backfill_battery_slot_energy(
                     else hist_discharged,
                 )
             )
-        return tuple(updated)
+        if any(
+            s.energy_charged_kwh is not None or s.energy_discharged_kwh is not None
+            for s in updated
+        ):
+            return tuple(updated)
 
     hist_charged, hist_discharged = parse_battery_energy_history(history_raw)
     if len(slots) == 1 and (hist_charged is not None or hist_discharged is not None):

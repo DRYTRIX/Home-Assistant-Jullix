@@ -23,6 +23,7 @@ FETCH_GROUP_TIER: dict[str, FeatureTier] = {
     "chargers_plugs": FeatureTier.CORE,
     "charger_control": FeatureTier.CORE,
     "plug_energy_history": FeatureTier.CORE,
+    "plug_energy_per_device": FeatureTier.EXTENDED,
     "battery_energy_history": FeatureTier.CORE,
     "cost": FeatureTier.EXTENDED,
     "cost_hourly_price": FeatureTier.EXTENDED,

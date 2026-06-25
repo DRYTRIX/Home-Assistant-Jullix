@@ -18,6 +18,7 @@ from ..device_helpers import (
     device_info_solar,
     device_info_system,
 )
+from ..models import JullixInstallationSnapshot
 from ..models.util import extract_plug_energy_total_kwh, extract_statistics_total_kwh, safe_float
 from .base import JullixSensor, get_installation_snapshot
 
@@ -95,6 +96,18 @@ def create_solar_home_entities(
                 translation_key="detail_solar_power",
             )
         )
+    if snap.energy_totals.solar_production_kwh is not None:
+        entities.append(
+            JullixSolarProductionEnergySensor(
+                coordinator=coordinator,
+                install_id=install_id,
+                install_name=install_name,
+                unique_id=f"{install_id}_solar_energy_production",
+                name="Solar production energy",
+                device_info=device_info_solar(install_id, install_name),
+                translation_key="solar_production_energy",
+            )
+        )
     if snap.home_detail.power_watts() is not None:
         entities.append(
             JullixSolarHomePowerSensor(
@@ -142,8 +155,10 @@ def create_plug_entities(
     coordinator: JullixDataUpdateCoordinator,
     install_id: str,
     install_name: str,
+    *,
+    snap: JullixInstallationSnapshot | None = None,
 ) -> list[JullixSensor]:
-    snap = get_installation_snapshot(coordinator, install_id)
+    snap = snap or get_installation_snapshot(coordinator, install_id)
     entities: list[JullixSensor] = []
     for plug in snap.plugs:
         model = plug.raw.get("model") or plug.raw.get("type")
@@ -169,6 +184,20 @@ def create_plug_entities(
                 translation_key="plug_power",
             )
         )
+        plug_kwh = snap.energy_totals.plug_energy_kwh_by_mac.get(plug.mac)
+        if plug_kwh is not None:
+            entities.append(
+                JullixPlugEnergySensor(
+                    coordinator=coordinator,
+                    install_id=install_id,
+                    install_name=install_name,
+                    plug_mac=plug.mac,
+                    unique_id=f"{install_id}_plug_{plug.mac}_energy",
+                    name="Energy",
+                    device_info=plug_dev,
+                    translation_key="plug_energy",
+                )
+            )
     return entities
 
 
@@ -369,6 +398,54 @@ class JullixSolarHomePowerSensor(JullixSensor):
             self._attr_native_value = snap.solar_detail.power_watts()
         else:
             self._attr_native_value = snap.home_detail.power_watts()
+
+
+class JullixSolarProductionEnergySensor(JullixSensor):
+    """Cumulative solar production (kWh)."""
+
+    _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+    _attr_device_class = SensorDeviceClass.ENERGY
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_suggested_display_precision = 2
+
+    def _update_from_snapshot(self) -> None:
+        snap = get_installation_snapshot(self.coordinator, self._install_id)
+        self._attr_native_value = snap.energy_totals.solar_production_kwh
+
+
+class JullixPlugEnergySensor(JullixSensor):
+    """Per-plug cumulative energy (kWh)."""
+
+    _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+    _attr_device_class = SensorDeviceClass.ENERGY
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_suggested_display_precision = 2
+
+    def __init__(
+        self,
+        coordinator: JullixDataUpdateCoordinator,
+        install_id: str,
+        install_name: str,
+        plug_mac: str,
+        unique_id: str,
+        name: str,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(
+            coordinator,
+            install_id,
+            install_name,
+            unique_id,
+            name,
+            **kwargs,
+        )
+        self._plug_mac = plug_mac
+
+    def _update_from_snapshot(self) -> None:
+        snap = get_installation_snapshot(self.coordinator, self._install_id)
+        self._attr_native_value = snap.energy_totals.plug_energy_kwh_by_mac.get(
+            self._plug_mac
+        )
 
 
 class JullixMeteringSensor(JullixSensor):

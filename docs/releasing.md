@@ -12,11 +12,11 @@ This project follows [Semantic Versioning](https://semver.org/) and documents ch
    - Set **`version`** in [`custom_components/jullix/manifest.json`](../custom_components/jullix/manifest.json) to **`X.Y.Z`** (must match the release).
 
 3. **Commit**
-   - Commit message example: `Release 1.6.2` (include changelog + manifest in the same commit).
+   - Commit message example: `Release 1.9.0` (include changelog + manifest in the same commit).
 
 4. **Tag**
    - Create an annotated or lightweight Git tag: `vX.Y.Z` (HACS and GitHub releases commonly use this prefix).
-   - Example: `git tag v1.6.2 && git push origin v1.6.2`
+   - Example: `git tag v1.9.0 && git push origin v1.9.0`
 
 5. **GitHub Release**
    - On GitHub: **Releases → Draft a new release**, choose tag `vX.Y.Z`, title `vX.Y.Z` or `Jullix X.Y.Z`.

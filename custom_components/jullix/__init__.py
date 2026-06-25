@@ -12,6 +12,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import device_registry as dr
 
 from .api import JullixApiClient
 from .const import (
@@ -32,6 +33,19 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+
+async def async_setup(hass: HomeAssistant) -> bool:
+    """Register domain-level helpers (repairs fix flow)."""
+    try:
+        from homeassistant.helpers import issue_registry as ir
+
+        from .repairs import async_create_fix_flow
+
+        ir.async_register_issue_handler(DOMAIN, async_create_fix_flow)
+    except (ImportError, AttributeError):
+        _LOGGER.debug("Repairs issue handler not registered (HA version or stubs)")
+    return True
 
 
 def _configured_installation_ids(hass: HomeAssistant) -> set[str]:
@@ -56,6 +70,7 @@ def _validate_installation_id(hass: HomeAssistant, installation_id: str) -> None
 
 PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
+    Platform.BUTTON,
     Platform.SENSOR,
     Platform.SWITCH,
     Platform.NUMBER,
@@ -67,6 +82,15 @@ SERVICE_RUN_ALGORITHM_HOURLY = "run_algorithm_hourly"
 SERVICE_ASSIGN_CHARGERSESSION = "assign_chargersession"
 SERVICE_UPDATE_TARIFF = "update_tariff"
 SERVICE_FORCE_ALGORITHM_COMMAND = "force_algorithm_command"
+
+ALL_SERVICES = (
+    SERVICE_SET_CHARGER_CONTROL,
+    SERVICE_RUN_ALGORITHM_HOURLY,
+    SERVICE_ASSIGN_CHARGERSESSION,
+    SERVICE_UPDATE_TARIFF,
+    SERVICE_FORCE_ALGORITHM_COMMAND,
+)
+
 CHARGER_MODES = ["eco", "turbo", "max", "block"]
 
 SCHEMA_SET_CHARGER_CONTROL = vol.Schema(
@@ -110,9 +134,12 @@ SCHEMA_FORCE_ALGORITHM_COMMAND = vol.Schema(
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Jullix from a config entry."""
     from .coordinator import JullixDataUpdateCoordinator
+    from .entity_discovery import JullixEntityDiscovery
+    from .repairs import JullixRepairsManager
     from .session_history import SessionHistoryRecorder
 
     hass.data.setdefault(DOMAIN, {})
+    meta = hass.data[DOMAIN].setdefault("_meta", {"loaded_entries": 0})
 
     api_token = entry.data.get(CONF_API_TOKEN)
     install_ids = entry.data.get(CONF_INSTALL_IDS, [])
@@ -153,6 +180,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         on_auth_error=_trigger_reauth,
     )
 
+    repairs = JullixRepairsManager(hass, entry.entry_id)
+    entity_discovery = JullixEntityDiscovery()
+    coordinator.attach_entry_context(entry.entry_id, repairs, entity_discovery)
+
     await coordinator.async_config_entry_first_refresh()
 
     hass.data[DOMAIN][entry.entry_id] = {
@@ -160,66 +191,89 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "api_client": api_client,
         "install_ids": install_ids,
         "local_host": entry.data.get(CONF_LOCAL_HOST),
+        "repairs": repairs,
+        "entity_discovery": entity_discovery,
+        "session_history": session_hist,
     }
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-    if not hass.services.has_service(DOMAIN, SERVICE_SET_CHARGER_CONTROL):
-        async def charger_control_handler(call: ServiceCall) -> None:
-            await _handle_set_charger_control(hass, call)
+    for install_id in install_ids:
+        snap = coordinator.data.get(install_id)
+        if snap:
+            entity_discovery.mark_initial(install_id, snap)
+    entity_discovery.finalize_initial()
 
-        hass.services.async_register(
-            DOMAIN,
-            SERVICE_SET_CHARGER_CONTROL,
-            charger_control_handler,
-            schema=SCHEMA_SET_CHARGER_CONTROL,
-        )
-
-    if not hass.services.has_service(DOMAIN, SERVICE_RUN_ALGORITHM_HOURLY):
-        async def run_algorithm_handler(call: ServiceCall) -> None:
-            await _handle_run_algorithm_hourly(hass, call)
-
-        hass.services.async_register(
-            DOMAIN,
-            SERVICE_RUN_ALGORITHM_HOURLY,
-            run_algorithm_handler,
-            schema=SCHEMA_RUN_ALGORITHM_HOURLY,
-        )
-
-    if not hass.services.has_service(DOMAIN, SERVICE_ASSIGN_CHARGERSESSION):
-        async def assign_session_handler(call: ServiceCall) -> None:
-            await _handle_assign_chargersession(hass, call)
-
-        hass.services.async_register(
-            DOMAIN,
-            SERVICE_ASSIGN_CHARGERSESSION,
-            assign_session_handler,
-            schema=SCHEMA_ASSIGN_CHARGERSESSION,
-        )
-
-    if not hass.services.has_service(DOMAIN, SERVICE_UPDATE_TARIFF):
-        async def update_tariff_handler(call: ServiceCall) -> None:
-            await _handle_update_tariff(hass, call)
-
-        hass.services.async_register(
-            DOMAIN,
-            SERVICE_UPDATE_TARIFF,
-            update_tariff_handler,
-            schema=SCHEMA_UPDATE_TARIFF,
-        )
-
-    if not hass.services.has_service(DOMAIN, SERVICE_FORCE_ALGORITHM_COMMAND):
-        async def force_algorithm_handler(call: ServiceCall) -> None:
-            await _handle_force_algorithm_command(hass, call)
-
-        hass.services.async_register(
-            DOMAIN,
-            SERVICE_FORCE_ALGORITHM_COMMAND,
-            force_algorithm_handler,
-            schema=SCHEMA_FORCE_ALGORITHM_COMMAND,
-        )
+    _register_services(hass)
+    meta["loaded_entries"] = int(meta.get("loaded_entries", 0)) + 1
 
     return True
+
+
+def _register_services(hass: HomeAssistant) -> None:
+    """Register domain services once."""
+    if hass.services.has_service(DOMAIN, SERVICE_SET_CHARGER_CONTROL):
+        return
+
+    async def charger_control_handler(call: ServiceCall) -> None:
+        await _handle_set_charger_control(hass, call)
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_SET_CHARGER_CONTROL,
+        charger_control_handler,
+        schema=SCHEMA_SET_CHARGER_CONTROL,
+    )
+
+    async def run_algorithm_handler(call: ServiceCall) -> None:
+        await _handle_run_algorithm_hourly(hass, call)
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_RUN_ALGORITHM_HOURLY,
+        run_algorithm_handler,
+        schema=SCHEMA_RUN_ALGORITHM_HOURLY,
+    )
+
+    async def assign_session_handler(call: ServiceCall) -> None:
+        await _handle_assign_chargersession(hass, call)
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_ASSIGN_CHARGERSESSION,
+        assign_session_handler,
+        schema=SCHEMA_ASSIGN_CHARGERSESSION,
+    )
+
+    async def update_tariff_handler(call: ServiceCall) -> None:
+        await _handle_update_tariff(hass, call)
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_UPDATE_TARIFF,
+        update_tariff_handler,
+        schema=SCHEMA_UPDATE_TARIFF,
+    )
+
+    async def force_algorithm_handler(call: ServiceCall) -> None:
+        await _handle_force_algorithm_command(hass, call)
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_FORCE_ALGORITHM_COMMAND,
+        force_algorithm_handler,
+        schema=SCHEMA_FORCE_ALGORITHM_COMMAND,
+    )
+
+
+def _unregister_services_if_last(hass: HomeAssistant) -> None:
+    """Remove domain services when the last config entry unloads."""
+    meta = hass.data.get(DOMAIN, {}).get("_meta", {})
+    if int(meta.get("loaded_entries", 0)) > 0:
+        return
+    for service in ALL_SERVICES:
+        if hass.services.has_service(DOMAIN, service):
+            hass.services.async_remove(DOMAIN, service)
 
 
 async def _handle_set_charger_control(hass: HomeAssistant, call: ServiceCall) -> None:
@@ -448,6 +502,74 @@ async def async_get_config_entry_diagnostics(
     return result
 
 
+async def async_get_device_diagnostics(
+    hass: HomeAssistant, entry: ConfigEntry, device: dr.DeviceEntry
+) -> dict[str, Any]:
+    """Return diagnostics for a Jullix device (no secrets)."""
+    entry_data = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+    if not isinstance(entry_data, dict):
+        return {"loaded": False}
+
+    coordinator = entry_data.get("coordinator")
+    if not coordinator:
+        return {"loaded": False}
+
+    install_id = _install_id_for_device(device, entry.data.get(CONF_INSTALL_IDS, []))
+    if not install_id:
+        return {"device": device.name, "installation_id": None}
+
+    snap = coordinator.data.get(install_id) if coordinator.data else None
+    result: dict[str, Any] = {
+        "installation_id": install_id,
+        "device_name": device.name,
+        "connection_mode": _connection_mode(entry),
+        "last_update_success": coordinator.last_update_success,
+        "refresh_sequence": getattr(coordinator, "_refresh_seq", None),
+        "extended_poll_interval": 3,
+    }
+    if install_id in coordinator.last_installation_errors:
+        result["last_error"] = str(coordinator.last_installation_errors[install_id])
+    if snap:
+        result["snapshot_summary"] = {
+            "chargers": len(snap.chargers),
+            "plugs": len(snap.plugs),
+            "battery_units": len(snap.battery_slots),
+            "energy_totals": {
+                "grid_import_kwh": snap.energy_totals.grid_import_kwh,
+                "grid_export_kwh": snap.energy_totals.grid_export_kwh,
+                "solar_production_kwh": snap.energy_totals.solar_production_kwh,
+            },
+        }
+    return result
+
+
+def _install_id_for_device(
+    device: dr.DeviceEntry, install_ids: list[str]
+) -> str | None:
+    """Resolve installation id from hub or child device identifiers."""
+    for ident in device.identifiers:
+        if ident[0] != DOMAIN:
+            continue
+        value = ident[1]
+        if value in install_ids:
+            return value
+        for iid in install_ids:
+            if value.startswith(f"{iid}_"):
+                return iid
+    return None
+
+
+def _connection_mode(entry: ConfigEntry) -> str:
+    options = entry.options or {}
+    local_host = entry.data.get(CONF_LOCAL_HOST)
+    use_local = bool(options.get(OPTION_USE_LOCAL, False))
+    if local_host and use_local:
+        return "cloud_with_local_merge"
+    if local_host:
+        return "cloud_local_configured"
+    return "cloud"
+
+
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
@@ -456,5 +578,14 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             coordinator = entry_data.get("coordinator")
             if coordinator and hasattr(coordinator, "async_shutdown"):
                 await coordinator.async_shutdown()
+            api_client = entry_data.get("api_client")
+            if api_client and hasattr(api_client, "close"):
+                await api_client.close()
+            repairs = entry_data.get("repairs")
+            if repairs and hasattr(repairs, "async_clear_all"):
+                repairs.async_clear_all()
         hass.data[DOMAIN].pop(entry.entry_id, None)
+        meta = hass.data[DOMAIN].get("_meta", {})
+        meta["loaded_entries"] = max(0, int(meta.get("loaded_entries", 0)) - 1)
+        _unregister_services_if_last(hass)
     return unload_ok

@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-06-25
+
+### Added
+
+- **Home Assistant framework:** config-entry deduplication, Repairs issues (auth/API/local EMS), device diagnostics, service unload when the last entry is removed, API client session cleanup, `quality_scale: bronze`.
+- **Energy Dashboard sensors:** grid import/export kWh, solar production kWh, per-plug cumulative energy, per-charger energy total (when API provides lifetime totals); per-plug energy fetched on extended polls.
+- **Button** platform — **Run hourly optimization** on the System device.
+- **Tariff select** entity when cost sensors are enabled.
+- **Dynamic entity discovery** for new chargers/plugs after setup (sensors, switches, selects, numbers).
+- **Session history sensors** — last session energy and session ID when session history option is on.
+- **Docs:** [Quality scale](docs/quality-scale.md), [Automations](docs/automations.md), grid-outage blueprint; expanded Energy Dashboard mapping in troubleshooting.
+
+### Changed
+
+- **Energy statistics** option defaults to on for new entries.
+- **Local EMS merge** applies when the config entry has a single installation (unchanged) or to the first site in multi-site entries; consecutive local failures surface a repair issue.
+- **Battery history backfill** matches slots by `localid` / device id when list lengths differ.
+
+### Fixed
+
+- **Charger mode** and **max power** entities read control state from the installation snapshot (not a dict on coordinator data).
+
 ## [1.9.0] - 2026-06-25
 
 ### Added

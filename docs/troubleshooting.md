@@ -65,6 +65,30 @@ This guide maps common problems to causes and fixes. Error strings below match t
 - **Cloud-only:** the integration also fetches today's battery energy history from the platform API and backfills totals when the live battery detail payload does not include them.
 - In [**Settings → Dashboards → Energy**](https://www.home-assistant.io/docs/energy/), map **Battery charged** to battery input and **Energy discharged** to battery output for your installation's battery device.
 
+### Full Energy Dashboard mapping
+
+| Home Assistant Energy category | Jullix sensor (device) |
+|-------------------------------|-------------------------|
+| Grid consumption | **Grid energy import** (Grid) |
+| Return to grid | **Grid energy export** (Grid) |
+| Solar production | **Solar production energy** (Solar) |
+| Battery input | **Energy charged** (Battery) |
+| Battery output | **Energy discharged** (Battery) |
+| EV charging (per charger) | **Energy total** or **Energy today** (Charger) |
+| Individual devices | **Energy** (Plug), metering channels with kWh units (System) |
+
+Some endpoints expose **today-only** totals (e.g. charger **Energy today**). Prefer sensors with `total_increasing` for long-term Energy history. Enable **Energy statistics sensors** and **Merge local Jullix-Direct data** when you have a local EMS.
+
+### Repairs (Settings → Repairs)
+
+The integration raises repair issues when:
+
+- The **API token** is rejected (fixable — update token via reauth).
+- **Cloud updates** fail repeatedly for an installation (stale data is shown until recovery).
+- **Local EMS merge** is enabled but the Jullix-Direct host is unreachable.
+
+See also [Automations](automations.md) for `jullix_event` triggers.
+
 ## Jullix-Direct (local) issues
 
 ### “Could not reach the local Jullix device” (`local_connection_failed`)
@@ -77,10 +101,19 @@ This guide maps common problems to causes and fixes. Error strings below match t
 
 - In **Configure**, enable **Merge local Jullix-Direct data when configured** (`use_local`). Without this, cloud data is used even if a local host was entered during setup.
 - Local merge applies in conjunction with the coordinator’s cloud fetch; if local is down, cloud data should still update.
+- For **multi-site config entries**, local EMS data is merged into the **first** installation in the list unless the entry contains only one site (then that site receives local data).
+
+## New chargers or plugs after setup
+
+- New hardware discovered on a later poll should appear automatically within one refresh cycle (no manual reload required). If entities are still missing, reload the integration once.
 
 ## Services fail with “No Jullix configuration includes installation_id …”
 
 Services such as `jullix.set_charger_control` and `jullix.force_algorithm_command` require an **`installation_id`** that belongs to **this** Home Assistant setup. Use the UUID shown in the Jullix device or in **Developer Tools → States** on any `jullix` entity (entity naming includes the installation id). The integration validates the id against configured installations and raises **`ServiceValidationError`** if it does not match ([`__init__.py`](../custom_components/jullix/__init__.py)).
+
+## Config entry diagnostics
+
+Home Assistant can download integration diagnostics from **Settings → Devices & services → Jullix → ⋮ → Download diagnostics**. The payload includes connection mode, effective options, and coordinator health indicators (no API token). Implementation: [`async_get_config_entry_diagnostics`](../custom_components/jullix/__init__.py).
 
 ## Still stuck?
 

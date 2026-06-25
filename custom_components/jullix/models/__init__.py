@@ -8,6 +8,7 @@ from .battery import (
 )
 from .charger import ChargerDevice, parse_charger_control_payload, parse_chargers_list
 from .costs import CostSavingsSnapshot, CostTotalSnapshot
+from .energy_totals import EnergyTotalsSnapshot, build_energy_totals
 from .installation import (
     JullixInstallationSnapshot,
     RawInstallFetches,
@@ -25,9 +26,11 @@ from .summary import (
 __all__ = [
     "BatterySlot",
     "build_installation_snapshot",
+    "build_energy_totals",
     "ChargerDevice",
     "CostSavingsSnapshot",
     "CostTotalSnapshot",
+    "EnergyTotalsSnapshot",
     "GridDetailSnapshot",
     "JullixInstallationSnapshot",
     "merge_local_snapshot",

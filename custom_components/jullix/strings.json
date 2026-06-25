@@ -188,8 +188,11 @@
       "summary_home_consumption": { "name": "Home consumption" },
       "summary_battery_power": { "name": "Battery power" },
       "detail_solar_power": { "name": "Solar power" },
+      "solar_production_energy": { "name": "Solar production energy" },
       "detail_home_power": { "name": "Consumption power" },
       "grid_power": { "name": "Grid power" },
+      "grid_energy_import": { "name": "Grid energy import" },
+      "grid_energy_export": { "name": "Grid energy export" },
       "capacity_tariff": { "name": "Capacity tariff" },
       "battery_state_of_charge": { "name": "State of charge" },
       "battery_power": { "name": "Power" },
@@ -198,12 +201,14 @@
       "charger_power": { "name": "Power" },
       "charger_status": { "name": "Status" },
       "charger_energy_today": { "name": "Energy today" },
+      "charger_energy_total": { "name": "Energy total" },
       "charger_events": { "name": "Events today" },
       "algorithm_settings": { "name": "Optimizer settings" },
       "algorithm_results": { "name": "Optimization results" },
       "algorithm_usage": { "name": "Usage model" },
       "algorithm_pvpredict": { "name": "Solar prediction" },
       "plug_power": { "name": "Power" },
+      "plug_energy": { "name": "Energy" },
       "plug_energy_today": { "name": "Plug energy today" },
       "statistics_energy_daily": { "name": "Energy daily" },
       "statistics_energy_monthly": { "name": "Energy monthly" },
@@ -229,7 +234,9 @@
       "charger_session_id": { "name": "Active charge session" },
       "charger_session_energy": { "name": "Session energy" },
       "charger_session_cost_estimate": { "name": "Session cost estimate" },
-      "charging_suggestion": { "name": "Charging suggestion" }
+      "charging_suggestion": { "name": "Charging suggestion" },
+      "last_session_energy": { "name": "Last session energy" },
+      "last_session_id": { "name": "Last session ID" }
     },
     "binary_sensor": {
       "peak_tariff": { "name": "Peak tariff" }
@@ -242,7 +249,25 @@
       "charger_max_power": { "name": "Max power" }
     },
     "select": {
-      "charger_mode": { "name": "Mode" }
+      "charger_mode": { "name": "Mode" },
+      "tariff_select": { "name": "Tariff" }
+    },
+    "button": {
+      "run_algorithm_hourly": { "name": "Run hourly optimization" }
+    }
+  },
+  "issues": {
+    "auth_failed": {
+      "title": "Jullix API token invalid or expired",
+      "description": "Authentication failed for installation(s): {installations}. Update your API token to restore cloud data."
+    },
+    "api_failure": {
+      "title": "Jullix API updates failing",
+      "description": "Repeated update failures for installation(s): {installations}. The integration is showing the last known good data."
+    },
+    "local_unreachable": {
+      "title": "Jullix-Direct local EMS unreachable",
+      "description": "Local merge is enabled but the Jullix-Direct device could not be reached. Cloud data is still used."
     }
   }
 }

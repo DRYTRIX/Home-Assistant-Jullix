@@ -7,7 +7,7 @@ Integration for the [Jullix](https://wiki.jullix.be/) Energy Management System (
 ## Features
 
 - **Real-time power**: Grid, solar, home consumption, battery, capacity tariff (captar)
-- **Battery**: State of charge (SoC) and power per battery
+- **Battery**: State of charge (SoC), power, and cumulative energy charged/discharged for the Energy Dashboard
 - **Metering**: Electricity import/export, gas consumption
 - **EV chargers**: Status and power; full control (switch, max power number, mode select, optional service)
 - **Smart plugs**: Power and plug energy today; on/off control
@@ -28,10 +28,10 @@ Integration for the [Jullix](https://wiki.jullix.be/) Energy Management System (
 3. **Settings** → **Devices & services** → **Add integration** → **Jullix**
 4. Enter your API token from [Mijn Jullix](https://mijn.jullix.be/) (Profiel → API-tokens) and select your installation(s)
 
-![Jullix HACS preview](docs/screenshots/hacs-preview.png)
+![Jullix HACS preview](docs/screenshots/energy-dashboard.png)
 
 More images and captions: [docs/screenshots](docs/screenshots/README.md).
 
 ## Documentation
 
-For full setup, configuration options, dashboard examples, architecture, and troubleshooting, see the [README](https://github.com/DRYTRIX/Home-Assistant-Jullix) and the [docs](https://github.com/DRYTRIX/Home-Assistant-Jullix/tree/main/docs) folder on GitHub.
+For full setup, configuration options, dashboard examples, architecture, and troubleshooting, see the [documentation hub](docs/README.md) and [README](https://github.com/DRYTRIX/Home-Assistant-Jullix) on GitHub.
