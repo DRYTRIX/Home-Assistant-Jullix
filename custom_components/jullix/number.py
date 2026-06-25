@@ -16,7 +16,7 @@ from .const import DOMAIN, OPTION_ENABLE_CHARGER_CONTROL
 from .device_helpers import device_info_charger
 from .coordinator import JullixDataUpdateCoordinator
 from .sensors.base import get_installation_snapshot
-from ..models import JullixInstallationSnapshot
+from .models import JullixInstallationSnapshot
 
 _LOGGER = logging.getLogger(__name__)
 

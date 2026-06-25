@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.10.2] - 2026-06-25
+
+### Fixed
+
+- **Integration setup** failed when loading switch, number, or select platforms because top-level platform modules imported `JullixInstallationSnapshot` from `..models` instead of `.models` (`ModuleNotFoundError: No module named 'custom_components.models'`).
+
 ## [1.10.1] - 2026-06-25
 
 ### Fixed
