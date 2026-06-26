@@ -16,7 +16,7 @@ Display names come from [`strings.json`](../custom_components/jullix/strings.jso
 
 | Category | Examples | Gated by option? |
 |----------|----------|------------------|
-| Per battery | State of charge, power | No (when API returns a battery slot) |
+| Per battery | State of charge, power, voltage | No (when API or local EMS returns a battery slot) |
 | Per battery energy | Energy charged, Energy discharged (`total_increasing` kWh) | No (when cumulative totals are available from detail, local EMS, or cloud history backfill) |
 
 Battery **power** is instantaneous (W). **Energy charged** / **Energy discharged** are cumulative kWh for the [Energy Dashboard](troubleshooting.md#battery-energy-for-the-energy-dashboard).
@@ -66,11 +66,25 @@ Metering entities use **hardcoded names** (`Meter {id}`) rather than `translatio
 | Session helpers | Session id, session energy, cost estimate, charging suggestion | **Charge session and suggestion sensors** |
 | Diagnostics | Connection health, API latency, last successful update | No |
 
+## Local EMS (Jullix-Direct)
+
+Registered when a **local gateway host** was set during setup (`local_host` in the config entry). Values update when **Merge local Jullix-Direct data when configured** is enabled and the gateway is reachable. Entities are **unavailable** until local EMS data is merged.
+
+| Category | Examples | Gated by option? |
+|----------|----------|------------------|
+| Grid meter detail | Grid power in/out, net power, energy import/export T1/T2, voltage L1/L2/L3 | Local host configured |
+| Water | Water usage (m³) | Local host configured |
+| Charger (local) | EV battery SOC, charger temperature, max current, charger state | Local host configured |
+| Binary | EV charger occupied, EV three phase active, battery fault, solar fault | Local host configured |
+
+These mirror the local-only entity set from community integrations that poll `/api/ems/*` directly. Cloud summary and detail sensors remain available independently.
+
 ## Platforms beyond sensors
 
 | Platform | Examples | Gated by option? |
 |----------|----------|------------------|
 | Binary sensor | Peak tariff | **Cost and savings sensors** |
+| Binary sensor (local) | EV occupied, three phase, battery/solar fault | Local gateway host configured |
 | Switch / number / select | Charger and plug controls | Charger / plug control options |
 
 ## Related reading

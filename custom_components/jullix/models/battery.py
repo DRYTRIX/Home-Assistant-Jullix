@@ -20,6 +20,8 @@ class BatterySlot:
     power_watts: float | None
     energy_charged_kwh: float | None
     energy_discharged_kwh: float | None
+    voltage: float | None
+    fault: bool | None
     name: str | None
     localid: str | None
     id_value: str | None
@@ -57,6 +59,14 @@ def _slot_from_item(item: dict[str, Any], index: int) -> BatterySlot:
         soc = safe_float(item.get("soc"))
     pw = power_value_to_watts(item.get("power"))
     charged, discharged = _energy_kwh_from_item(item)
+    voltage = safe_float(bat.get("voltage"))
+    if voltage is None:
+        voltage = safe_float(item.get("voltage"))
+    fault: bool | None = None
+    if "fault" in bat:
+        fault = bool(bat["fault"])
+    elif "fault" in item:
+        fault = bool(item["fault"])
     name = item.get("name") or bat.get("name")
     localid = bat.get("localid")
     id_val = item.get("id") or bat.get("id")
@@ -66,6 +76,8 @@ def _slot_from_item(item: dict[str, Any], index: int) -> BatterySlot:
         power_watts=pw,
         energy_charged_kwh=charged,
         energy_discharged_kwh=discharged,
+        voltage=voltage,
+        fault=fault,
         name=str(name) if name is not None else None,
         localid=str(localid) if localid is not None else None,
         id_value=str(id_val) if id_val is not None else None,

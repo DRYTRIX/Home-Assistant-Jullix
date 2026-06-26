@@ -39,6 +39,7 @@ from .energy import (
 )
 from .grid import create_grid_entities
 from .insights import create_insight_entities
+from .local_ems import create_local_ems_entities
 from .session_history import create_session_history_entities
 from ..models import JullixInstallationSnapshot
 
@@ -89,6 +90,7 @@ async def async_setup_entry(
     enable_session_history = options.get(OPTION_ENABLE_SESSION_HISTORY, False)
     session_hist = data.get("session_history")
     entity_discovery = data.get("entity_discovery")
+    local_host = data.get("local_host")
 
     entities: list[JullixSensor] = []
     for install_id in install_ids:
@@ -108,7 +110,11 @@ async def async_setup_entry(
             )
 
         entities.extend(create_summary_power_entities(coordinator, install_id, install_name))
-        entities.extend(create_battery_entities(coordinator, install_id, install_name))
+        entities.extend(
+            create_battery_entities(
+                coordinator, install_id, install_name, local_host=local_host
+            )
+        )
         entities.extend(create_solar_home_entities(coordinator, install_id, install_name))
         entities.extend(create_grid_entities(coordinator, install_id, install_name))
         entities.extend(create_metering_entities(coordinator, install_id, install_name))
@@ -157,6 +163,11 @@ async def async_setup_entry(
 
         if wf := maybe_weather_forecast_entity(coordinator, install_id, install_name):
             entities.append(wf)
+
+        if local_host:
+            entities.extend(
+                create_local_ems_entities(coordinator, install_id, install_name)
+            )
 
     if entity_discovery:
         entity_discovery.register_platform(

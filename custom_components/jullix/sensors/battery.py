@@ -8,7 +8,7 @@ from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorStateClass,
 )
-from homeassistant.const import UnitOfEnergy, UnitOfPower
+from homeassistant.const import UnitOfEnergy, UnitOfElectricPotential, UnitOfPower
 
 from ..coordinator import JullixDataUpdateCoordinator
 from ..device_helpers import device_info_battery
@@ -19,6 +19,8 @@ def create_battery_entities(
     coordinator: JullixDataUpdateCoordinator,
     install_id: str,
     install_name: str,
+    *,
+    local_host: str | None = None,
 ) -> list[JullixSensor]:
     """Battery SoC, power, and cumulative energy from snapshot."""
     snap = get_installation_snapshot(coordinator, install_id)
@@ -79,6 +81,23 @@ def create_battery_entities(
                     name="Energy discharged",
                     device_info=bat_dev,
                     translation_key="battery_energy_discharged",
+                )
+            )
+        if (
+            slot.voltage is not None
+            or "voltage" in slot.raw
+            or (local_host and slot.index == 0)
+        ):
+            entities.append(
+                JullixBatteryVoltageSensor(
+                    coordinator=coordinator,
+                    install_id=install_id,
+                    install_name=install_name,
+                    battery_index=slot.index,
+                    unique_id=f"{install_id}_battery_{slot.index}_voltage",
+                    name="Voltage",
+                    device_info=bat_dev,
+                    translation_key="battery_voltage",
                 )
             )
 
@@ -230,3 +249,56 @@ class JullixBatteryEnergyDischargedSensor(JullixSensor):
             self._attr_native_value = slots[self._battery_index].energy_discharged_kwh
         else:
             self._attr_native_value = None
+
+
+class JullixBatteryVoltageSensor(JullixSensor):
+    """Battery voltage (V)."""
+
+    _attr_native_unit_of_measurement = UnitOfElectricPotential.VOLT
+    _attr_device_class = SensorDeviceClass.VOLTAGE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(
+        self,
+        coordinator: JullixDataUpdateCoordinator,
+        install_id: str,
+        install_name: str,
+        battery_index: int,
+        unique_id: str,
+        name: str,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(
+            coordinator=coordinator,
+            install_id=install_id,
+            install_name=install_name,
+            unique_id=unique_id,
+            name=name,
+            **kwargs,
+        )
+        self._battery_index = battery_index
+
+    def _update_from_snapshot(self) -> None:
+        snap = get_installation_snapshot(self.coordinator, self._install_id)
+        slots = snap.battery_slots
+        if 0 <= self._battery_index < len(slots):
+            voltage = slots[self._battery_index].voltage
+            if voltage is None and self._battery_index == 0:
+                voltage = snap.local_ems.battery_voltage
+            self._attr_native_value = voltage
+        else:
+            self._attr_native_value = None
+
+    @property
+    def available(self) -> bool:
+        if not super().available:
+            return False
+        snap = get_installation_snapshot(self.coordinator, self._install_id)
+        slots = snap.battery_slots
+        if 0 <= self._battery_index < len(slots):
+            slot = slots[self._battery_index]
+            if slot.voltage is not None:
+                return True
+            if self._battery_index == 0 and snap.local_ems.battery_voltage is not None:
+                return True
+        return False

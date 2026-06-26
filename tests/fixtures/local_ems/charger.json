@@ -1,0 +1,11 @@
+[
+  {
+    "power": 7.4,
+    "soc": 55,
+    "temperature": 28.6,
+    "max_current": 16,
+    "state": "charging",
+    "busy": true,
+    "three_phase": true
+  }
+]

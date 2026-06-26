@@ -1,0 +1,8 @@
+[
+  {
+    "power": 0.5,
+    "energy_charged": 100.0,
+    "energy_discharged": 90.0,
+    "battery": { "soc": 72.0, "voltage": 51.2, "fault": false }
+  }
+]

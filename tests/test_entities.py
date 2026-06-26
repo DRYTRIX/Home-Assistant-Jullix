@@ -172,3 +172,41 @@ async def test_select_setup_creates_charger_mode_entity(hass_and_entry):
         uid and "inst-1_charger" in (uid or "") and "mode" in (uid or "")
         for uid in unique_ids
     )
+
+
+@pytest.mark.asyncio
+async def test_sensor_setup_creates_local_ems_entities_when_local_host(
+    hass_and_entry, sample_installation_snapshot
+):
+    """Local EMS sensors are registered when a gateway host is configured."""
+    from custom_components.jullix import sensor
+
+    hass, entry = hass_and_entry
+    hass.data["jullix"]["test-entry"]["local_host"] = "192.168.2.150"
+    added = []
+
+    def capture(entities):
+        added.extend(entities)
+
+    await sensor.async_setup_entry(hass, entry, capture)
+    unique_ids = [getattr(e, "unique_id", None) for e in added]
+    assert any(uid and "local_grid_power_in" in (uid or "") for uid in unique_ids)
+    assert any(uid and "local_ev_soc" in (uid or "") for uid in unique_ids)
+
+
+@pytest.mark.asyncio
+async def test_binary_sensor_setup_local_ems_when_local_host(hass_and_entry):
+    """Local EMS binary sensors register when a gateway host is configured."""
+    from custom_components.jullix import binary_sensor
+
+    hass, entry = hass_and_entry
+    hass.data["jullix"]["test-entry"]["local_host"] = "192.168.2.150"
+    added = []
+
+    def capture(entities):
+        added.extend(entities)
+
+    await binary_sensor.async_setup_entry(hass, entry, capture)
+    unique_ids = [getattr(e, "unique_id", None) for e in added]
+    assert any(uid and "local_ev_occupied" in (uid or "") for uid in unique_ids)
+    assert any(uid and "local_solar_fault" in (uid or "") for uid in unique_ids)

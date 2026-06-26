@@ -11,6 +11,7 @@ from .battery import (
     parse_battery_detail,
 )
 from .energy_totals import EnergyTotalsSnapshot, build_energy_totals
+from .local_ems import LocalEmsSnapshot, parse_local_ems
 from .charger import ChargerDevice, parse_charger_control_payload, parse_chargers_list
 from .costs import CostSavingsSnapshot, CostTotalSnapshot
 from .plug import PlugDevice, parse_plug_energy_today, parse_plugs_list
@@ -99,6 +100,7 @@ class JullixInstallationSnapshot:
     algorithm_usage: Any
     algorithm_pvpredict: Any
     energy_totals: EnergyTotalsSnapshot
+    local_ems: LocalEmsSnapshot
 
     def installation_display_name(self, install_id: str) -> str:
         meta = self.installation_meta
@@ -279,6 +281,7 @@ def build_installation_snapshot(raw: RawInstallFetches) -> JullixInstallationSna
         algorithm_usage=algo_usage,
         algorithm_pvpredict=algo_pvpredict,
         energy_totals=energy_totals,
+        local_ems=LocalEmsSnapshot.empty(),
     )
 
 
@@ -340,4 +343,5 @@ def merge_local_snapshot(
         charger_detail_rows=charger_detail_rows,
         plug_detail_rows=plug_detail_rows,
         energy_totals=energy_totals,
+        local_ems=parse_local_ems(local_data),
     )

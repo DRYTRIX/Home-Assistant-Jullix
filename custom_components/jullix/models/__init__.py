@@ -15,6 +15,7 @@ from .installation import (
     build_installation_snapshot,
     merge_local_snapshot,
 )
+from .local_ems import LocalEmsSnapshot, parse_local_ems
 from .plug import PlugDevice, parse_plug_energy_today, parse_plugs_list
 from .summary import (
     GridDetailSnapshot,
@@ -33,10 +34,12 @@ __all__ = [
     "EnergyTotalsSnapshot",
     "GridDetailSnapshot",
     "JullixInstallationSnapshot",
+    "LocalEmsSnapshot",
     "merge_local_snapshot",
     "MeteringSnapshot",
     "backfill_battery_slot_energy",
     "parse_battery_energy_history",
+    "parse_local_ems",
     "parse_charger_control_payload",
     "parse_chargers_list",
     "parse_plug_energy_today",

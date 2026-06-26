@@ -198,6 +198,22 @@
       "battery_power": { "name": "Power" },
       "battery_energy_charged": { "name": "Energy charged" },
       "battery_energy_discharged": { "name": "Energy discharged" },
+      "battery_voltage": { "name": "Voltage" },
+      "local_grid_power_in": { "name": "Grid power in" },
+      "local_grid_power_out": { "name": "Grid power out" },
+      "local_net_power": { "name": "Net power" },
+      "local_energy_import_t1": { "name": "Energy import T1" },
+      "local_energy_import_t2": { "name": "Energy import T2" },
+      "local_energy_export_t1": { "name": "Energy export T1" },
+      "local_energy_export_t2": { "name": "Energy export T2" },
+      "local_voltage_l1": { "name": "Voltage L1" },
+      "local_voltage_l2": { "name": "Voltage L2" },
+      "local_voltage_l3": { "name": "Voltage L3" },
+      "local_water_usage": { "name": "Water usage" },
+      "local_ev_battery_soc": { "name": "EV battery SOC" },
+      "local_ev_charger_temperature": { "name": "EV charger temperature" },
+      "local_ev_max_current": { "name": "EV max current" },
+      "local_charger_state": { "name": "EV charger state" },
       "charger_power": { "name": "Power" },
       "charger_status": { "name": "Status" },
       "charger_energy_today": { "name": "Energy today" },
@@ -239,7 +255,11 @@
       "last_session_id": { "name": "Last session ID" }
     },
     "binary_sensor": {
-      "peak_tariff": { "name": "Peak tariff" }
+      "peak_tariff": { "name": "Peak tariff" },
+      "local_ev_charger_occupied": { "name": "EV charger occupied" },
+      "local_ev_three_phase_active": { "name": "EV three phase active" },
+      "local_battery_fault": { "name": "Battery fault" },
+      "local_solar_fault": { "name": "Solar fault" }
     },
     "switch": {
       "charger_charging": { "name": "Charging" },

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-06-26
+
+### Added
+
+- **Local EMS (Jullix-Direct) sensors:** grid power in/out, net power, dual-tariff import/export (T1/T2), phase voltages (L1–L3), water usage, EV battery SOC, charger temperature, max current, and charger state — registered when a local gateway host is configured and populated when **Merge local Jullix-Direct data** is enabled.
+- **Local EMS binary sensors:** EV charger occupied, EV three phase active, battery fault, solar fault (same host + merge requirements).
+- **Battery voltage** sensor on the Battery device when voltage data is available from detail or local EMS.
+
 ## [1.10.2] - 2026-06-25
 
 ### Fixed

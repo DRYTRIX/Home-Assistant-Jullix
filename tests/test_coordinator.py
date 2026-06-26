@@ -65,6 +65,26 @@ def test_merge_local_snapshot_merge_solar_battery_meter():
     assert result.battery_slots[0].soc == 80.0
     assert len(result.metering.channels) == 1
     assert result.metering.channels[0].get("value") == 1.0
+    assert result.local_ems.solar_fault is None
+
+
+def test_merge_local_snapshot_nested_meter_local_ems():
+    """Nested local meter fields populate local_ems snapshot."""
+    platform = build_installation_snapshot(RawInstallFetches())
+    local = {
+        "meter": {
+            "power": {"in": 2.0, "out": 0.5},
+            "energy": {"in_1": 100.0, "in_2": 50.0, "out_1": 10.0, "out_2": 5.0},
+            "voltage": {"l1": 230.0, "l2": 231.0, "l3": 229.0},
+            "water": 1.25,
+        }
+    }
+    result = merge_local_snapshot(platform, local)
+    assert result.local_ems.power_in_w == 2000.0
+    assert result.local_ems.power_out_w == 500.0
+    assert result.local_ems.net_power_w == 1500.0
+    assert result.local_ems.energy_in_1_kwh == 100.0
+    assert result.local_ems.water_m3 == 1.25
 
 
 def test_merge_local_snapshot_battery_envelope():
