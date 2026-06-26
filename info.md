@@ -2,36 +2,17 @@
 
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support-yellow.svg)](https://buymeacoffee.com/drytrix)
 
-Integration for the [Jullix](https://wiki.jullix.be/) Energy Management System (Innovoltus). Bring solar, battery, grid, EV chargers, and smart plugs into Home Assistant with real-time power monitoring and optional device control.
+Home Assistant integration for [Jullix](https://wiki.jullix.be/) (Innovoltus): solar, battery, grid, EV chargers, and smart plugs from the Mijn Jullix cloud API, with optional **Jullix-Direct** LAN merge for faster readings and extra meter detail.
 
-## Features
+## Install
 
-- **Real-time power**: Grid, solar, home consumption, battery, capacity tariff (captar)
-- **Battery**: State of charge (SoC), power, and cumulative energy charged/discharged for the Energy Dashboard
-- **Metering**: Electricity import/export, gas consumption
-- **EV chargers**: Status and power; full control (switch, max power number, mode select, optional service)
-- **Smart plugs**: Power and plug energy today; on/off control
-- **Cost & savings**: Optional cost, savings, and cost total this month sensors
-- **Energy statistics**: Optional daily, monthly, yearly energy statistics sensors
-- **Weather alarm**: Sensor for active weather alerts
-- **Algorithm, tariff, weather**: Optimization overview plus extended optimizer sensors; services for run-hourly, force command, assign charge session, and update tariff
-- **Charger extended**: Per-charger status, energy today, and events when the API provides them
-- **Binary sensors**: For example peak tariff when cost sensors are enabled
-- **Automation events**: Optional `jullix_event` for charger, battery, and grid-style transitions
-- **Session history**: Optional storage of recent charge sessions in Home Assistant
-- **Jullix-Direct**: Local real-time data merged with cloud when configured
+1. **HACS → Integrations** → search **Jullix** → Download → restart Home Assistant
+2. **Settings → Devices & services → Add integration → Jullix**
+3. API token from [Mijn Jullix](https://mijn.jullix.be/) → **Profiel → API-tokens**
+4. Pick your installation(s); optionally set a local gateway host
 
-## Installation
+Not in the catalog yet? Add custom repo `https://github.com/DRYTRIX/Home-Assistant-Jullix` (Integration), then install.
 
-1. In **HACS** → **Integrations** → **⋮** → **Custom repositories**, add `https://github.com/DRYTRIX/Home-Assistant-Jullix` (category **Integration**) if the integration is not in the default catalog
-2. **Explore & Download** → search **Jullix** → **Download**, then restart Home Assistant
-3. **Settings** → **Devices & services** → **Add integration** → **Jullix**
-4. Enter your API token from [Mijn Jullix](https://mijn.jullix.be/) (Profiel → API-tokens) and select your installation(s)
+![Energy dashboard](docs/screenshots/energy-dashboard.png)
 
-![Jullix HACS preview](docs/screenshots/energy-dashboard.png)
-
-More images and captions: [docs/screenshots](docs/screenshots/README.md).
-
-## Documentation
-
-For full setup, configuration options, dashboard examples, architecture, and troubleshooting, see the [documentation hub](docs/README.md) and [README](https://github.com/DRYTRIX/Home-Assistant-Jullix) on GitHub.
+Setup screenshots: [docs/screenshots](docs/screenshots/README.md). Full docs: [README](https://github.com/DRYTRIX/Home-Assistant-Jullix/blob/main/README.md) and [docs/README.md](https://github.com/DRYTRIX/Home-Assistant-Jullix/blob/main/docs/README.md).

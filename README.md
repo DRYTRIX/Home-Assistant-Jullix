@@ -1,341 +1,126 @@
-# Jullix Home Assistant integration
+# Jullix for Home Assistant
 
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2024.1%2B-blue.svg)](https://www.home-assistant.io/)
 [![GitHub Issues](https://img.shields.io/badge/Support-GitHub%20Issues-blue.svg)](https://github.com/DRYTRIX/Home-Assistant-Jullix/issues)
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support-yellow.svg)](https://buymeacoffee.com/drytrix)
 
-**Connect [Jullix](https://wiki.jullix.be/) (Innovoltus Energy Management System) to Home Assistant:** live power and energy data, battery and solar visibility, EV chargers and smart plugs, optional cost and tariff helpers, and automations via services and `jullix_event`. Data comes from the [Mijn Jullix](https://mijn.jullix.be/) Platform API, with optional **Jullix-Direct** LAN merge for faster local readings.
+Connect your [Jullix](https://wiki.jullix.be/) (Innovoltus) energy system to Home Assistant: live power from grid, solar, home, and battery; EV chargers and smart plugs; optional cost and tariff helpers; charger and plug control when you want it. Data comes from the [Mijn Jullix](https://mijn.jullix.be/) cloud API. If you have a Jullix gateway on the LAN, you can optionally merge **Jullix-Direct** readings for faster updates and extra meter detail.
 
----
+More detail: [docs/](docs/README.md) · [Changelog](CHANGELOG.md)
 
-## What is this?
+## What you need
 
-This integration is a config-flow–based custom component that polls Jullix in the cloud (`cloud_polling`) and exposes **sensors**, **binary sensors**, and (when enabled) **switches**, **numbers**, and **selects** for chargers and plugs. Power is normalized to **watts** for compatibility with the [Energy dashboard](https://www.home-assistant.io/docs/energy/) and standard templates. Advanced behavior (cost, statistics, tariff, weather, algorithm, charge session, events, adaptive polling) is **optional** so you can keep the entity list small.
+- Home Assistant **2024.1** or newer.
+- A Jullix account with at least one installation.
+- A Platform API **JWT** from Mijn Jullix (treat it like a password).
+- Outbound internet from the Home Assistant host for cloud polling.
 
-**Further reading:** [Documentation hub](docs/README.md) · [Architecture](docs/architecture.md) · [Feature tiers](docs/features.md) · [Troubleshooting](docs/troubleshooting.md) · [Changelog](CHANGELOG.md)
+## Install
 
----
+### HACS
 
-## Features
+1. Install [HACS](https://hacs.xyz/docs/setup/download) and restart Home Assistant.
+2. Open **HACS → Integrations**, search for **Jullix**, and install.
+3. Restart Home Assistant again.
+4. Go to **Settings → Devices & services → Add integration → Jullix**.
 
-### Core (stable)
-
-- **Power summary:** Grid, solar, home, battery (including capacity tariff / captar where provided).
-- **Detail channels:** Battery (SoC, power, and cumulative **Energy charged** / **Energy discharged** for the Energy Dashboard), solar strings, grid, home, plugs, chargers, metering (import/export, gas where available).
-- **EV chargers:** Power and status per charger.
-- **Smart plugs:** Per-plug power; installation-level **plug energy today** via history API.
-- **Diagnostics:** Connection health, API latency, last successful update.
-- **Discovery:** Zeroconf `_http._tcp.local.` with name `jullix*` can pre-fill the optional local host step.
-
-### Advanced (optional or heavier API use)
-
-- **Charger control:** Switch, max power (kW), mode select (eco / turbo / max / block), plus service `jullix.set_charger_control`.
-- **Plug control:** On/off switches for smart plugs.
-- **Cost and savings:** Optional sensors including **cost total this month**; hourly price and **automation helper** sensors; **Peak tariff** binary sensor (when cost path is active).
-- **Energy statistics:** Optional daily, monthly, yearly statistics sensors.
-- **Tariff and weather:** Tariff and forecast sensors; `jullix.update_tariff`; weather alarm.
-- **Algorithm:** Optimization overview and extended optimizer sensors (settings, results, usage, solar prediction); `jullix.run_algorithm_hourly`, `jullix.force_algorithm_command`, `jullix.assign_chargersession`.
-- **Charger extended data:** Per-charger status, energy today, and event count when the API provides them (extended poll).
-- **Energy insights:** Instantaneous % estimates from power summary (not the same as metered kWh self-consumption)—can be disabled.
-- **Events:** Home Assistant event type **`jullix_event`** for charger, battery, and grid-style transitions (can be disabled).
-- **Adaptive polling:** Faster ~30 s polling while charging or during strong grid/battery activity.
-- **Charge session:** Session-related sensors and suggestions (extra API usage on extended polls).
-- **Session history:** Last 50 session records in HA storage when enabled.
-- **Jullix-Direct:** Optional local host; merge with cloud when **Merge local Jullix-Direct data when configured** (`use_local`) is enabled.
-
-### Experimental
-
-- No **user-facing** experimental flags today. Internal **`EXPERIMENTAL`** API tier in code is reserved for future unstable endpoints (see [docs/features.md](docs/features.md)).
-
----
-
-## Prerequisites
-
-- **Home Assistant** 2024.1 or newer (minimum supported release).
-- **Developer / CI test floors** differ: GitHub Actions installs `homeassistant>=2024.12.0`; the full local test stack in [`requirements-test.txt`](requirements-test.txt) may pin a newer Home Assistant for compatibility testing. See [CONTRIBUTING.md](CONTRIBUTING.md).
-- A **Jullix account** with at least one installation.
-- A **Platform API JWT** from Mijn Jullix (treat it like a password).
-- **Internet** access from the Home Assistant host (or use Jullix-Direct only for merged local data—cloud polling still applies for full functionality).
-
----
-
-## Installation
-
-### HACS (recommended)
-
-1. Install [**HACS**](https://hacs.xyz/docs/setup/download) if you have not already, then restart Home Assistant.
-2. Open **HACS** → **Integrations** → open the **⋮** menu (top right) → **Custom repositories**.
-3. Add repository **`https://github.com/DRYTRIX/Home-Assistant-Jullix`**, category **Integration**, then **Add**.
-4. In **HACS** → **Integrations** → **Explore & Download Repositories**, search for **Jullix**, open it, and **Download**.
-5. **Restart** Home Assistant.
-6. Go to **Settings** → **Devices & services** → **Add integration** → **Jullix**.
-
-If Jullix is ever listed in the default HACS catalog, you can skip the custom repository step and install directly from **Explore & Download**.
+If Jullix is not in your HACS catalog yet, add this repo under **⋮ → Custom repositories**: `https://github.com/DRYTRIX/Home-Assistant-Jullix` (category **Integration**), then install from **Explore & Download Repositories**.
 
 ### Manual
 
-1. Copy the [`custom_components/jullix`](custom_components/jullix) folder into your Home Assistant **`config/custom_components/`** directory.
-2. Restart Home Assistant.
-3. Add the integration under **Settings** → **Devices & services** → **Add integration** → **Jullix**.
+Copy [`custom_components/jullix`](custom_components/jullix) into `config/custom_components/`, restart Home Assistant, and add the integration from **Devices & services**.
 
----
+## Setup
 
-## Setup guide
+### API token
 
-### 1. Create an API token
-
-1. Log in to **[Mijn Jullix](https://mijn.jullix.be/)**.
-2. Go to **Profiel** (Profile) → **API-tokens**.
-3. Create a token and copy the **JWT** (full string, no spaces).
+1. Log in to [Mijn Jullix](https://mijn.jullix.be/).
+2. Open **Profiel → API-tokens** and create a token.
+3. Copy the full JWT string (no spaces).
 
 ![API token step](docs/screenshots/setup-api-token.png)
 
-### 2. Add the integration and validate the token
+### Add the integration
 
-1. **Settings** → **Devices & services** → **Add integration** → **Jullix**.
-2. Paste the token. The flow contacts Jullix and loads your account.
-
-### 3. Select installation(s)
-
-Choose one or more sites to include in this config entry. You can add another config entry later for a different account if needed.
+1. **Settings → Devices & services → Add integration → Jullix**.
+2. Paste the token. Home Assistant contacts Jullix and lists your sites.
+3. Select one or more installations for this config entry.
 
 ![Installation selection](docs/screenshots/setup-installations.png)
 
-### 4. Optional: Jullix-Direct
+### Jullix-Direct (optional)
 
-Enter **`jullix.local`** or the device **IP**, or leave empty for cloud-only. If you enter a host, the flow checks reachability; you can still complete setup if local check fails and fix the network later.
+On the local-host step, enter `jullix.local`, an IP address, or leave the field empty for cloud-only. Zeroconf may pre-fill a discovered `jullix*` host. The flow checks reachability; you can finish setup even if the local check fails and fix networking later.
 
-### 5. Tune options
+Local data only appears in entities after you enable **Merge local Jullix-Direct data when configured** in integration options (see below). For multi-site entries, local merge applies to the **first** installation in the list.
 
-Open **Configure** on the Jullix integration card to change polling and feature toggles (see next section).
+### Options
+
+Open **Configure** on the Jullix card to tune polling and features.
 
 ![Integration options](docs/screenshots/options-jullix.png)
 
----
+| Option | Default | Notes |
+|--------|---------|-------|
+| Polling interval (seconds) | 60 | Range 30–300. Lower = fresher data, more API load. |
+| Cost and savings sensors | Off | Cost, savings, monthly total, hourly price helpers, peak-tariff binary. |
+| Energy statistics sensors (daily / monthly / yearly) | On | Daily / monthly / yearly totals and rolling 7-day energy. Uses extended polls. |
+| Charger controls (switch, mode, max power) | On | Anyone with HA access can start/stop charging—turn off if that is a concern. |
+| Smart plug switches | On | On/off per plug. |
+| Merge local Jullix-Direct data when configured | Off | Needs a local host from setup and a reachable gateway. |
+| Energy insight sensors (self-consumption, solar use, grid share) | On | Instantaneous % estimates from power summary—not metered kWh self-consumption. |
+| Fire Home Assistant events for charger, battery, and grid changes | On | `jullix_event` for automations. |
+| Poll faster while charging or high grid/battery activity | Off | ~30 s while active; otherwise your interval. |
+| Charge session and suggestion sensors (extra API calls) | On | Session helpers on extended polls. |
+| Store short session log in Home Assistant storage | Off | Last 50 session records in HA storage. |
 
-## Configuration options
+## Entities
 
-All options are under **Settings** → **Devices & services** → **Jullix** → **Configure**. Defaults favor a rich setup; disable what you do not need to reduce entities and API load.
+Entity IDs include your installation UUID, e.g. `sensor.jullix_a1b2c3d4_e5f6_7890_abcd_ef1234567890_summary_solar` (hyphens in the UUID become underscores in the entity id).
 
-| Option | Default | What it does |
-|--------|---------|----------------|
-| **Polling interval (seconds)** | 60 | How often the coordinator refreshes cloud data (allowed range 30–300). Lower is more responsive; higher reduces load. |
-| **Cost and savings sensors** | Off | Adds cost/savings/monthly total, hourly price helpers, peak tariff binary, and related automation-oriented sensors when Jullix provides data. |
-| **Energy statistics sensors** | Off | Daily / monthly / yearly energy statistics entities, plus **Energy rolling 7 days** (`statistics_energy_7d`) when data is available (more API data on extended polls). |
-| **Charger controls** | On | Exposes charger switch, max power number, and mode select. **Security:** anyone who can use Home Assistant can start/stop charging—turn off if undesired. |
-| **Smart plug switches** | On | On/off control for smart plugs. |
-| **Merge local Jullix-Direct data when configured** | Off | When a local host was set at setup, merges live local EMS data with cloud data for the first configured installation. Requires the local device to be reachable. |
-| **Energy insight sensors** | On | Self-consumption / solar use / grid dependency style **instantaneous** estimates from power summary. |
-| **Fire Home Assistant events** | On | Enables **`jullix_event`** for charger start/stop, battery high/low, and grid heuristics. |
-| **Adaptive polling** | Off | Uses a ~30 s interval while charging or during strong grid/battery power; otherwise uses your polling interval. |
-| **Charge session and suggestion sensors** | On | Session-related sensors (extra calls on extended polls). |
-| **Store short session log in Home Assistant storage** | Off | Retains the last 50 session records in HA storage. |
+**Find your installation ID:** open **Settings → Devices & services → Jullix → [your site]** and copy the UUID from the device page, or filter **Developer tools → States** for `jullix` and read it from any entity id.
 
----
+Platforms: sensor (most data), binary sensor (peak tariff; local fault/occupancy when Direct is merged), switch / number / select (chargers and plugs), button (run optimization).
 
-## Entities overview
+Full entity list and option gating: [docs/entities.md](docs/entities.md).
 
-Entity IDs typically include your **installation UUID** (for example `sensor.jullix_<uuid>_summary_solar`). Platforms used:
+## Services and automations
 
-- **Sensor** — Power, energy, metering, diagnostics, cost, statistics, tariff, weather, algorithm, insights, charger session helpers, etc.
-- **Binary sensor** — e.g. **Peak tariff** when cost helpers are enabled.
-- **Switch / Number / Select** — Charger and plug control when those options are on.
+Five services in the `jullix` domain (`set_charger_control`, `run_algorithm_hourly`, `force_algorithm_command`, `assign_chargersession`, `update_tariff`). Field definitions: [`services.yaml`](custom_components/jullix/services.yaml).
 
-For a category-by-category list (including dynamic **Meter {id}** entities and API-dependent extended sensors), see [docs/entities.md](docs/entities.md).
+Events, example automations, and blueprints: [docs/automations.md](docs/automations.md).
 
-Use **Settings** → **Devices & services** → **Jullix** → your **device** to browse everything for a site, or **Developer tools** → **States** and filter `jullix`.
+## Energy dashboard
 
----
-
-## Services
-
-Services appear under the **`jullix`** domain (**Developer tools** → **Services**). **`installation_id`** must match an installation configured in this Home Assistant instance.
-
-| Service | Purpose |
-|---------|---------|
-| **`jullix.set_charger_control`** | Set charger **on/off**, **mode** (`eco`, `turbo`, `max`, `block`), and/or **max_power** (kW, 1.4–22). Requires `installation_id`, `charger_mac`. |
-| **`jullix.run_algorithm_hourly`** | Triggers Jullix **hourly optimization** for an installation. |
-| **`jullix.force_algorithm_command`** | Sends a **force command** to the gateway optimizer (`command` must match Jullix API). |
-| **`jullix.assign_chargersession`** | Assigns a charge **session** to optional **charger** and/or **car**. Requires `session_id`. |
-| **`jullix.update_tariff`** | Sets the active **tariff** code (e.g. `single`, `dual`)—must match values Jullix accepts. |
-
-Field details and selectors match [`custom_components/jullix/services.yaml`](custom_components/jullix/services.yaml).
-
----
-
-## Events (`jullix_event`)
-
-When **Fire Home Assistant events** is enabled, the integration fires **`jullix_event`** with a payload including:
-
-- **`type`:** `charger_started`, `charger_stopped`, `battery_full`, `battery_empty`, `grid_outage`, `grid_reconnect`
-- **`installation_id`:** Jullix installation UUID
-- **`domain`:** `jullix`
-- Extra keys may include **`charger_mac`**, **`power_w`**, **`soc`**, **`grid_import_w`** depending on the event
-
-**Automation trigger:** Event type **`jullix_event`** (platform `event`).
-
-**Heuristics** (see [`const.py`](custom_components/jullix/const.py)): charger active above **400 W**, idle below **150 W**; battery full at **≥ 95%** SoC, empty at **≤ 10%**; grid outage when import stays below **300 W** for **2** consecutive polls while home load is low.
-
----
-
-## Example automations
-
-### Notify when a charger starts charging
-
-```yaml
-automation:
-  - alias: "Jullix charger started notify"
-    trigger:
-      - platform: event
-        event_type: jullix_event
-        event_data:
-          type: charger_started
-    action:
-      - service: notify.persistent_notification
-        data:
-          title: "Charging started"
-          message: "Charger {{ trigger.event.data.charger_mac }} on {{ trigger.event.data.installation_id }}"
-```
-
-### Alert on peak tariff (binary sensor)
-
-Replace `<installation_uuid>` with your installation id (same string as in entity names).
-
-```yaml
-automation:
-  - alias: "Jullix peak tariff warning"
-    trigger:
-      - platform: state
-        entity_id: binary_sensor.jullix_<installation_uuid>_peak_tariff
-        to: "on"
-    action:
-      - service: notify.persistent_notification
-        data:
-          title: "Peak tariff window"
-          message: "Current hour is in a high-price period."
-```
-
-### Run hourly optimization on a schedule
-
-```yaml
-automation:
-  - alias: "Jullix nightly optimization"
-    trigger:
-      - platform: time
-        at: "23:30:00"
-    action:
-      - service: jullix.run_algorithm_hourly
-        data:
-          installation_id: "<installation_uuid>"
-```
-
----
-
-## Dashboard and usage
-
-### Energy dashboard
-
-Add Jullix **grid**, **solar**, **home**, and **battery** power sensors where appropriate in [**Energy**](https://www.home-assistant.io/docs/energy/) configuration.
-
-For cumulative battery kWh totals, map per-battery **Energy charged** to battery input and **Energy discharged** to battery output. These sensors use `device_class: energy` and `state_class: total_increasing`. See [Battery energy for the Energy Dashboard](docs/troubleshooting.md#battery-energy-for-the-energy-dashboard) for local vs cloud sourcing.
+Map grid, solar, home, and battery sensors in [**Settings → Dashboards → Energy**](https://www.home-assistant.io/docs/energy/). For cumulative battery kWh, use **Energy charged** and **Energy discharged**.
 
 ![Energy dashboard example](docs/screenshots/energy-dashboard.png)
 
-### Power units
+Mapping table, template examples, and Lovelace snippets: [docs/troubleshooting.md#full-energy-dashboard-mapping](docs/troubleshooting.md#full-energy-dashboard-mapping).
 
-Power is stored in **watts (W)**. For a kW template sensor:
+## Troubleshooting
 
-```yaml
-template:
-  - sensor:
-      - name: "Jullix solar power kW"
-        unique_id: jullix_solar_power_kw
-        unit_of_measurement: "kW"
-        state: "{{ (states('sensor.jullix_<installation_uuid>_summary_solar') | float(0) / 1000) | round(2) }}"
-        device_class: power
-```
+Common fixes: token rejected → new JWT via reauth; missing entities → check integration options and wait for an extended poll; local data missing → enable merge and verify the host from the HA machine; services failing → use the installation UUID from an existing entity.
 
-### Example Lovelace card
+Repairs may appear for bad tokens, repeated cloud failures, or unreachable local EMS. Download diagnostics from **Jullix → ⋮ → Download diagnostics** (no token in the export).
 
-```yaml
-type: entities
-title: Jullix power
-entities:
-  - entity: sensor.jullix_<installation_uuid>_summary_grid
-  - entity: sensor.jullix_<installation_uuid>_summary_solar
-  - entity: sensor.jullix_<installation_uuid>_summary_home
-  - entity: sensor.jullix_<installation_uuid>_summary_battery
-```
+Full guide: [docs/troubleshooting.md](docs/troubleshooting.md). Dutch FAQ: [Jullix wiki](https://wiki.jullix.be/doku.php?id=nl:faq:integratie).
 
----
+## Documentation
 
-## Screenshots
-
-UI captures for setup and dashboards. To refresh images, see [docs/screenshots/README.md](docs/screenshots/README.md).
-
-| Step | Preview |
-|------|---------|
-| API token | ![](docs/screenshots/setup-api-token.png) |
-| Installations | ![](docs/screenshots/setup-installations.png) |
-| Options | ![](docs/screenshots/options-jullix.png) |
-| Energy | ![](docs/screenshots/energy-dashboard.png) |
-
----
-
-## Documentation index
-
-| Document | Description |
-|----------|-------------|
-| [docs/README.md](docs/README.md) | Documentation hub by audience. |
-| [CHANGELOG.md](CHANGELOG.md) | Version history (Keep a Changelog). |
-| [docs/entities.md](docs/entities.md) | Entity categories, options, and naming patterns. |
-| [docs/architecture.md](docs/architecture.md) | API, coordinator, models, data flow. |
-| [docs/features.md](docs/features.md) | Core / extended / experimental tiers and polling. |
-| [docs/api.md](docs/api.md) | Platform API path → client method mapping (contributors). |
-| [docs/troubleshooting.md](docs/troubleshooting.md) | Token, API, entities, local connection, services. |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Contributor onboarding, tests, PR workflow. |
-| [docs/development.md](docs/development.md) | Project layout, new sensors, API extensions. |
-| [docs/releasing.md](docs/releasing.md) | Version bump, tag, GitHub Release, HACS. |
-| [docs/brands.md](docs/brands.md) | Brand images and Home Assistant install analytics. |
-| [docs/hacs-publish.md](docs/hacs-publish.md) | HACS default catalog submission checklist. |
-| [.github/REPO_SETUP.md](.github/REPO_SETUP.md) | GitHub repository metadata for HACS validation. |
-| [tests/README.md](tests/README.md) | Pytest commands, CI, and API fixtures. |
-
-### External links
-
-- [Jullix Wiki](https://wiki.jullix.be/doku.php?id=nl:start) (Dutch)
-- [Integration FAQ](https://wiki.jullix.be/doku.php?id=nl:faq:integratie) (Dutch; primary integration docs in this repo are English)
-- [Platform API docs](https://mijn.jullix.be/apidocs/)
-- [HACS publish checklist](https://hacs.xyz/docs/publish/include#check-repository)
-
----
-
-## For maintainers
-
-### Install analytics (optional)
-
-Home Assistant does not report install counts from this integration directly. After merging brand assets into [home-assistant/brands](https://github.com/home-assistant/brands) (see [docs/brands.md](docs/brands.md)), opt-in **Usage analytics** on user instances can list `jullix` in [public analytics](https://analytics.home-assistant.io/). You may then add a README badge from a public feed, for example:
-
-```markdown
-![Home Assistant installs](https://img.shields.io/endpoint?url=https://vaskivskyi.github.io/ha-custom-analytics/badges/jullix/total.json)
-```
-
-Counts are aggregated and under-report instances that disable analytics.
-
----
-
-## Repository setup (HACS validation)
-
-See [.github/REPO_SETUP.md](.github/REPO_SETUP.md) for the recommended GitHub **Description**, **Topics**, and related metadata.
-
----
+| Doc | Contents |
+|-----|----------|
+| [docs/README.md](docs/README.md) | Documentation index |
+| [docs/entities.md](docs/entities.md) | Entity names, local EMS |
+| [docs/automations.md](docs/automations.md) | Events, services, examples |
+| [docs/architecture.md](docs/architecture.md) | Coordinator, API, data flow |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Dev setup and PRs |
 
 ## Support
 
-- **[GitHub Issues](https://github.com/DRYTRIX/Home-Assistant-Jullix/issues)**
-- **Changelog:** [CHANGELOG.md](CHANGELOG.md)
+[GitHub Issues](https://github.com/DRYTRIX/Home-Assistant-Jullix/issues) · [Changelog](CHANGELOG.md)
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+[MIT](LICENSE)

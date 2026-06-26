@@ -52,6 +52,7 @@ This guide maps common problems to causes and fixes. Error strings below match t
    - **Smart plug switches** — plug switches.
    - **Energy insight sensors** — self-consumption / solar use / grid share style sensors.
    - **Charge session and suggestion sensors** — session-related sensors.
+   - **Merge local Jullix-Direct data** — local EMS sensors (grid T1/T2, voltages, water, EV extras, local binary sensors) stay empty or unavailable until merge is on and the gateway responds.
 2. **Installation selection** — entities exist only for installations selected during setup (per config entry).
 3. **Reload** — after changing options, the integration reloads; wait one poll cycle.
 4. **Developer Tools → States** — search `jullix` to confirm entity IDs; use **Devices** to see everything grouped by site.
@@ -67,6 +68,12 @@ This guide maps common problems to causes and fixes. Error strings below match t
 
 ### Full Energy Dashboard mapping
 
+Add grid, solar, home, and battery **power** sensors where appropriate. Power values from Jullix are in **watts**.
+
+![Energy dashboard example](screenshots/energy-dashboard.png)
+
+**Find your installation ID:** **Settings → Devices & services → Jullix → [your site]**, or **Developer tools → States** filtered to `jullix`. Examples below use installation `a1b2c3d4-e5f6-7890-abcd-ef1234567890` (entity ids use underscores instead of hyphens).
+
 | Home Assistant Energy category | Jullix sensor (device) |
 |-------------------------------|-------------------------|
 | Grid consumption | **Grid energy import** (Grid) |
@@ -77,7 +84,31 @@ This guide maps common problems to causes and fixes. Error strings below match t
 | EV charging (per charger) | **Energy total** or **Energy today** (Charger) |
 | Individual devices | **Energy** (Plug), metering channels with kWh units (System) |
 
-Some endpoints expose **today-only** totals (e.g. charger **Energy today**). Prefer sensors with `total_increasing` for long-term Energy history. Enable **Energy statistics sensors** and **Merge local Jullix-Direct data** when you have a local EMS.
+Some endpoints expose **today-only** totals (e.g. charger **Energy today**). Prefer sensors with `total_increasing` for long-term Energy history. Enable **Energy statistics sensors (daily / monthly / yearly)** and **Merge local Jullix-Direct data when configured** when you have a local EMS.
+
+#### Template: solar power in kW
+
+```yaml
+template:
+  - sensor:
+      - name: "Jullix solar power kW"
+        unique_id: jullix_solar_power_kw
+        unit_of_measurement: "kW"
+        state: "{{ (states('sensor.jullix_a1b2c3d4_e5f6_7890_abcd_ef1234567890_summary_solar') | float(0) / 1000) | round(2) }}"
+        device_class: power
+```
+
+#### Lovelace: power summary card
+
+```yaml
+type: entities
+title: Jullix power
+entities:
+  - entity: sensor.jullix_a1b2c3d4_e5f6_7890_abcd_ef1234567890_summary_grid
+  - entity: sensor.jullix_a1b2c3d4_e5f6_7890_abcd_ef1234567890_summary_solar
+  - entity: sensor.jullix_a1b2c3d4_e5f6_7890_abcd_ef1234567890_summary_home
+  - entity: sensor.jullix_a1b2c3d4_e5f6_7890_abcd_ef1234567890_summary_battery
+```
 
 ### Repairs (Settings → Repairs)
 

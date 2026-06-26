@@ -23,7 +23,7 @@ The integration is **cloud-first** (`iot_class: cloud_polling` in `manifest.json
 - **Concurrency:** Fetches are limited with an asyncio semaphore (`_FETCH_CONCURRENCY = 4`) to avoid hammering the API.
 - **Extended polling:** Not every API group runs on every refresh. “Extended” groups (cost, statistics, tariff, weather, algorithm, charger session, and related) run when [`run_extended_this_refresh`](../custom_components/jullix/features.py) is true—by default every 3rd refresh (`EXTENDED_POLL_INTERVAL`). See [Feature tiers](features.md). This group also fetches installation metadata (used for the device display name), the extended algorithm endpoints (settings, results, usage, PV predict), and per-charger status/events/energies (keyed by MAC in `charger_status_by_mac`, `charger_events_by_mac`, `charger_energies_by_mac`).
 - **Adaptive polling:** When enabled, the coordinator can shorten the update interval while chargers are active or grid/battery power is high (`ADAPTIVE_FAST_POLL_SECONDS`, thresholds in `const.py`).
-- **Jullix-Direct:** If a local host was configured and **Merge local Jullix-Direct data** is on, the coordinator instantiates **`JullixLocalClient`** and merges local EMS data with cloud snapshots (`merge_local_snapshot`).
+- **Jullix-Direct:** If a local host was configured and **Merge local Jullix-Direct data** is on, the coordinator instantiates **`JullixLocalClient`** and merges local EMS data with cloud snapshots (`merge_local_snapshot`). Parsed local fields live in **`LocalEmsSnapshot`** ([`models/local_ems.py`](../custom_components/jullix/models/local_ems.py)); sensors and binary sensors in [`sensors/local_ems.py`](../custom_components/jullix/sensors/local_ems.py) and [`binary_sensor.py`](../custom_components/jullix/binary_sensor.py) read from that snapshot and stay unavailable until merge succeeds.
 - **Battery cumulative energy:** Per-battery **Energy charged** and **Energy discharged** sensors (`state_class: total_increasing`) read from [`models/battery.py`](../custom_components/jullix/models/battery.py). Live values come from battery detail or local EMS `/api/ems/battery`; when cloud detail omits totals, the coordinator fetches today's **`battery_energy_history`** (CORE tier) and backfills from [`API_PATH_HISTORY_BATTERY_ENERGY`](../custom_components/jullix/const.py). Entities are created in [`sensors/battery.py`](../custom_components/jullix/sensors/battery.py).
 - **Events:** After a successful update, [`events.detect_and_fire_events`](../custom_components/jullix/events.py) compares successive snapshots and may fire **`jullix_event`** on meaningful transitions (charger start/stop, battery thresholds, grid heuristics).
 - **Auth callback:** Optional `on_auth_error` can trigger reauthentication flow when the API returns auth failures.
@@ -37,6 +37,7 @@ The integration is **cloud-first** (`iot_class: cloud_polling` in `manifest.json
 | `installation.py` | **`JullixInstallationSnapshot`**: normalized per-installation state entities consume. **`RawInstallFetches`**: raw JSON fragments before parsing. **`build_installation_snapshot`**, **`merge_local_snapshot`**. |
 | `summary.py` | Power summary, grid/solar/home detail snapshots (`PowerSummarySnapshot`, `GridDetailSnapshot`, `SolarHomeSnapshot`). |
 | `battery.py` | **`BatterySlot`** and battery detail parsing. |
+| `local_ems.py` | **`LocalEmsSnapshot`**: grid meter, water, and local charger fields from Jullix-Direct `/api/ems/*`. |
 | `charger.py` | **`ChargerDevice`**, charger list and control payload parsing. |
 | `plug.py` | **`PlugDevice`**, plug list and plug energy parsing. |
 | `costs.py` | Cost/savings and monthly total snapshots. |
@@ -48,9 +49,10 @@ Entities should treat **`JullixInstallationSnapshot`** as the only structured so
 
 **Entry point:** [`custom_components/jullix/__init__.py`](../custom_components/jullix/__init__.py) registers:
 
-- `BINARY_SENSOR` (e.g. peak tariff when cost helpers are enabled)
-- `SENSOR` (bulk of the integration)
-- `SWITCH`, `NUMBER`, `SELECT` (chargers and plugs when control options are enabled)
+- `BINARY_SENSOR` — peak tariff when cost helpers are enabled; local EMS occupancy/fault flags when a gateway host is configured
+- `BUTTON` — **Run hourly optimization** per installation (calls `jullix.run_algorithm_hourly`)
+- `SENSOR` — bulk of the integration, including [`sensors/local_ems.py`](../custom_components/jullix/sensors/local_ems.py) when a local host is set
+- `SWITCH`, `NUMBER`, `SELECT` — chargers and plugs when control options are enabled; **Tariff** select when cost sensors are on
 
 **Sensors** are split by domain under [`custom_components/jullix/sensors/`](../custom_components/jullix/sensors/); [`sensors/setup.py`](../custom_components/jullix/sensors/setup.py) aggregates `create_*_entities` factories based on config entry options (cost, statistics, insights, charger session, etc.). [`sensors/algorithm_extended.py`](../custom_components/jullix/sensors/algorithm_extended.py) and [`sensors/charger_extended.py`](../custom_components/jullix/sensors/charger_extended.py) are unconditional (not option-gated): each entity is only created when the corresponding extended-poll data is actually present on the snapshot.
 

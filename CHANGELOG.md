@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-06-26
+
+### Added
+
+- **CI:** `scripts/check-docs-placeholders.sh` blocks common template leftovers in user-facing docs (runs in HACS validation workflow).
+- **HACS publish checklist** expanded with human-review documentation quality criteria and PR reply template.
+
+### Changed
+
+- **README** streamlined for install, setup, and options; services, automations, Energy Dashboard templates, and Lovelace examples moved to [docs/automations.md](docs/automations.md) and [docs/troubleshooting.md](docs/troubleshooting.md).
+- **info.md** and [docs/README.md](docs/README.md) aligned with README (HACS 2.0 renders README as storefront).
+- **docs/architecture.md**, **docs/entities.md**, and **docs/screenshots/README.md** updated for local EMS, button/select platforms, and current screenshot assets.
+
+### Fixed
+
+- **Framework:** `CONFIG_SCHEMA` registered for config-entry-only domain setup (`config_entry_only_config_schema`).
+- **Tests:** Home Assistant stubs support `config_entry_only_config_schema` when core is not installed.
+
 ## [1.11.0] - 2026-06-26
 
 ### Added

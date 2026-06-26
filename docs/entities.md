@@ -85,11 +85,13 @@ These mirror the local-only entity set from community integrations that poll `/a
 |----------|----------|------------------|
 | Binary sensor | Peak tariff | **Cost and savings sensors** |
 | Binary sensor (local) | EV occupied, three phase, battery/solar fault | Local gateway host configured |
+| Button | Run hourly optimization | No (one per installation) |
+| Select | Tariff | **Cost and savings sensors** |
 | Switch / number / select | Charger and plug controls | Charger / plug control options |
 
 ## Related reading
 
-- [README entities overview](../README.md#entities-overview)
-- [Configuration options](../README.md#configuration-options)
+- [README entities overview](../README.md#entities)
+- [Configuration options](../README.md#options)
 - [Troubleshooting — missing entities](troubleshooting.md#missing-entities)
 - [Architecture](architecture.md)

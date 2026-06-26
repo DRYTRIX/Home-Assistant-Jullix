@@ -29,7 +29,6 @@ if not _HA_AVAILABLE and "homeassistant" not in sys.modules:
     ha_mock.const.Platform = MagicMock()
     ha_mock.core.HomeAssistant = MagicMock()
     ha_mock.core.ServiceCall = MagicMock()
-    ha_mock.helpers.config_validation.cv = MagicMock()
 
     _ha_util_dt = types.ModuleType("homeassistant.util.dt")
 
@@ -42,9 +41,46 @@ if not _HA_AVAILABLE and "homeassistant" not in sys.modules:
     sys.modules["homeassistant.util"] = _ha_util
     sys.modules["homeassistant.util.dt"] = _ha_util_dt
 
+    _ha_helpers = types.ModuleType("homeassistant.helpers")
+
+    class _ConfigValidationModule(types.ModuleType):
+        """Stub cv module; unknown attrs behave like the old MagicMock cv."""
+
+        def __getattr__(self, name: str) -> MagicMock:
+            return MagicMock()
+
+    _ha_helpers_config_validation = _ConfigValidationModule(
+        "homeassistant.helpers.config_validation"
+    )
+
+    def _config_entry_only_config_schema(domain: str) -> object:
+        """Stub for homeassistant.helpers.config_validation.config_entry_only_config_schema."""
+        import voluptuous as vol
+
+        return vol.Schema({vol.Optional(domain): object})
+
+    _ha_helpers_config_validation.config_entry_only_config_schema = (
+        _config_entry_only_config_schema
+    )
+    _ha_helpers.config_validation = _ha_helpers_config_validation
+
+    _ha_helpers_device_registry = types.ModuleType("homeassistant.helpers.device_registry")
+    _ha_helpers_device_registry.DeviceEntry = MagicMock()
+    _ha_helpers_device_registry.DeviceInfo = MagicMock()
+    _ha_helpers.device_registry = _ha_helpers_device_registry
+
+    _ha_helpers_typing = types.ModuleType("homeassistant.helpers.typing")
+    _ha_helpers_typing.ConfigType = dict
+    _ha_helpers.typing = _ha_helpers_typing
+
+    _ha_helpers_entity = types.ModuleType("homeassistant.helpers.entity")
+    _ha_helpers_entity.Entity = MagicMock()
+    _ha_helpers_entity.EntityCategory = MagicMock()
+    _ha_helpers.entity = _ha_helpers_entity
+
     _ha_helpers_frame = types.ModuleType("homeassistant.helpers.frame")
     _ha_helpers_frame.report_usage = MagicMock()
-    sys.modules["homeassistant.helpers.frame"] = _ha_helpers_frame
+    _ha_helpers.frame = _ha_helpers_frame
 
     _ha_update_coordinator = types.ModuleType("homeassistant.helpers.update_coordinator")
 
@@ -75,9 +111,10 @@ if not _HA_AVAILABLE and "homeassistant" not in sys.modules:
     _ha_update_coordinator.DataUpdateCoordinator = DataUpdateCoordinator
     _ha_update_coordinator.UpdateFailed = UpdateFailed
     _ha_update_coordinator.CoordinatorEntity = CoordinatorEntity
-    ha_mock.helpers.update_coordinator = _ha_update_coordinator
+    _ha_helpers.update_coordinator = _ha_update_coordinator
+    ha_mock.helpers = _ha_helpers
 
-    ha_mock.helpers.entity.Entity = MagicMock()
+    ha_mock.config_entries.SOURCE_REAUTH = "reauth"
     ha_mock.components.switch.SwitchEntity = MagicMock()
     ha_mock.components.number.NumberEntity = MagicMock()
     ha_mock.components.select.SelectEntity = MagicMock()
@@ -99,10 +136,13 @@ if not _HA_AVAILABLE and "homeassistant" not in sys.modules:
     sys.modules["homeassistant.core"] = ha_mock.core
     sys.modules["homeassistant.data_entry_flow"] = ha_mock.data_entry_flow
     sys.modules["homeassistant.exceptions"] = ha_mock.exceptions
-    sys.modules["homeassistant.helpers"] = ha_mock.helpers
-    sys.modules["homeassistant.helpers.config_validation"] = ha_mock.helpers.config_validation
+    sys.modules["homeassistant.helpers"] = _ha_helpers
+    sys.modules["homeassistant.helpers.config_validation"] = _ha_helpers_config_validation
+    sys.modules["homeassistant.helpers.device_registry"] = _ha_helpers_device_registry
+    sys.modules["homeassistant.helpers.typing"] = _ha_helpers_typing
     sys.modules["homeassistant.helpers.update_coordinator"] = _ha_update_coordinator
-    sys.modules["homeassistant.helpers.entity"] = ha_mock.helpers.entity
+    sys.modules["homeassistant.helpers.entity"] = _ha_helpers_entity
+    sys.modules["homeassistant.helpers.frame"] = _ha_helpers_frame
     sys.modules["homeassistant.components.switch"] = ha_mock.components.switch
     sys.modules["homeassistant.components.number"] = ha_mock.components.number
     sys.modules["homeassistant.components.select"] = ha_mock.components.select

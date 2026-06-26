@@ -1,14 +1,17 @@
 # Jullix integration documentation
 
-Documentation for the [Home Assistant Jullix integration](https://github.com/DRYTRIX/Home-Assistant-Jullix). Start with the [README](../README.md) for installation and setup.
+Docs for the [Home Assistant Jullix integration](https://github.com/DRYTRIX/Home-Assistant-Jullix). New users: start with the [README](../README.md) (install, setup, options).
+
+**HACS 2.0+** renders the repository [README](../README.md) in the store UI, not [`info.md`](../info.md). Keep both in sync when changing install steps or screenshots.
 
 ## Install and use
 
 | Document | Description |
 |----------|-------------|
-| [README](../README.md) | Installation, setup, options, services, automations, dashboards |
-| [info.md](../info.md) | Short HACS storefront summary |
+| [README](../README.md) | Installation, setup, options (HACS storefront) |
+| [info.md](../info.md) | Short summary (legacy HACS card; README is primary) |
 | [entities.md](entities.md) | Entity categories, naming patterns, option gating |
+| [automations.md](automations.md) | Services, `jullix_event`, example automations |
 | [troubleshooting.md](troubleshooting.md) | Token errors, missing entities, Energy Dashboard, Jullix-Direct |
 | [screenshots/README.md](screenshots/README.md) | UI capture guide for README images |
 

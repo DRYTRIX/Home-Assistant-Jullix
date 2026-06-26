@@ -32,6 +32,7 @@ This project follows [Semantic Versioning](https://semver.org/) and documents ch
 - [ ] `manifest.json` `version` matches the tag (without `v` prefix in the file).
 - [ ] CI green on the release branch (`Test` workflow).
 - [ ] Optional: run full pytest locally with `requirements-test.txt`.
+- [ ] If preparing a HACS default-catalog submission, complete the [documentation quality checklist](hacs-publish.md#documentation-quality-human-review) and confirm `scripts/check-docs-placeholders.sh` passes.
 
 ## Version semantics (short)
 
