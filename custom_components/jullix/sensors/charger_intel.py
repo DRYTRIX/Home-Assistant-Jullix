@@ -22,7 +22,7 @@ def create_charger_intel_entities(
     install_id: str,
     install_name: str,
 ) -> list[JullixSensor]:
-    sys_dev = device_info_system(install_id, install_name)
+    sys_dev = device_info_system(install_id, install_name, hass=coordinator.hass)
     return [
         JullixSessionIdSensor(
             coordinator=coordinator,
@@ -76,7 +76,7 @@ class JullixSessionIdSensor(JullixSensor):
 class JullixSessionEnergySensor(JullixSensor):
     _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
     _attr_device_class = SensorDeviceClass.ENERGY
-    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
     _attr_suggested_display_precision = 3
 
     def _update_from_snapshot(self) -> None:
@@ -87,7 +87,7 @@ class JullixSessionEnergySensor(JullixSensor):
 
 class JullixSessionCostSensor(JullixSensor):
     _attr_device_class = SensorDeviceClass.MONETARY
-    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_state_class = SensorStateClass.TOTAL
     _attr_suggested_display_precision = 4
 
     def _update_from_snapshot(self) -> None:

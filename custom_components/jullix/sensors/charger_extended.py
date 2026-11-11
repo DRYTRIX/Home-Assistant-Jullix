@@ -17,10 +17,15 @@ from .base import JullixSensor, get_installation_snapshot
 def _status_state(payload: Any) -> str | None:
     data = unwrap_data(payload)
     if isinstance(data, dict):
-        for key in ("status", "state", "connection", "mode"):
+        for key in ("status", "state", "mode"):
             val = data.get(key)
-            if val is not None:
+            if val is not None and not isinstance(val, dict):
                 return str(val)
+        connection = data.get("connection")
+        if isinstance(connection, dict) and connection.get("status") is not None:
+            return str(connection.get("status"))
+        if connection is not None and not isinstance(connection, dict):
+            return str(connection)
     return None
 
 
@@ -37,13 +42,21 @@ def _events_count(payload: Any) -> int | None:
 
 
 def _charger_energy_kwh(payload: Any) -> float | None:
+    """Parse daily energy; empty day payload reports 0 when the endpoint answered."""
+    if payload is None:
+        return None
     data = unwrap_data(payload)
     if isinstance(data, dict):
         for key in ("energy", "energy_kwh", "total", "kwh", "total_energy"):
-            v = safe_float(data.get(key))
-            if v is not None:
-                return v
-    if isinstance(data, list) and data:
+            if key in data:
+                v = safe_float(data.get(key))
+                return v if v is not None else 0.0
+        # Explicit empty day envelope
+        if not data or data.get("energies") == [] or data.get("data") == []:
+            return 0.0
+    if isinstance(data, list):
+        if not data:
+            return 0.0
         total = 0.0
         found = False
         for item in data:
@@ -54,7 +67,7 @@ def _charger_energy_kwh(payload: Any) -> float | None:
                 if v is not None:
                     total += v
                     found = True
-        return total if found else None
+        return total if found else 0.0
     return None
 
 
@@ -78,8 +91,7 @@ def create_charger_extended_entities(
             install_name,
             mac,
             ch.display_name,
-            model=model,
-        )
+            model=model, hass=coordinator.hass)
         if mac in snap.charger_status_by_mac:
             entities.append(
                 JullixChargerStatusSensor(

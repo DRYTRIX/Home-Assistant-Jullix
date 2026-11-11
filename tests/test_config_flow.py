@@ -50,6 +50,7 @@ def _make_flow():
     flow._config = {}
     flow._pending_token = None
     flow._token_flow_error = None
+    flow._validate_task = None
     flow._discovered_host = None
     flow.async_set_unique_id = AsyncMock(return_value=None)
     flow._abort_if_unique_id_configured = MagicMock()
@@ -59,7 +60,14 @@ def _make_flow():
         return_value={"type": FlowResultType.SHOW_PROGRESS, "progress_action": "x"}
     )
     # Record the coroutine only; tests await it directly (avoid double schedule vs asyncio.create_task).
-    flow.hass.async_create_task = MagicMock(return_value=None)
+    # Return a done task so async_step_validate_token can proceed past the in-flight check.
+    done_task = MagicMock()
+    done_task.done.return_value = True
+
+    def _create_task(coro):
+        return done_task
+
+    flow.hass.async_create_task = MagicMock(side_effect=_create_task)
     return flow
 
 
@@ -207,6 +215,7 @@ async def test_step_user_single_install_skips_to_local():
     ("token_flow_error", "installations", "expected_next_step_id"),
     [
         ("invalid_auth", [], "user"),
+        (None, [], "user"),  # completed with empty list -> no_installations
         (None, [{"id": ""}], "user"),
         (None, [{"id": "inst-1", "name": "Home"}], "local"),
         (None, [{"id": "inst-1"}, {"id": "inst-2"}], "installations"),
@@ -215,22 +224,64 @@ async def test_step_user_single_install_skips_to_local():
 async def test_async_step_validate_token_never_returns_form(
     token_flow_error, installations, expected_next_step_id
 ):
-    """async_step_validate_token must only ever return show_progress_done.
+    """async_step_validate_token must not return a form.
 
-    It is only ever reached as the resume-step of a show_progress (see
-    async_step_user). Home Assistant requires that result to be show_progress
-    or show_progress_done - returning a form directly here raises ValueError
-    inside the progress task's done-callback, which is silently swallowed
-    there and never reaches the frontend (the flow just hangs). Regression
-    test for "does not finish authenticating with the JWT token".
+    Home Assistant requires show_progress or show_progress_done from this
+    step - returning a form raises ValueError in the progress done-callback.
     """
     flow = _make_flow()
     flow._token_flow_error = token_flow_error
     flow._installations = installations
     flow._api_token = "token"
+    # Treat task as finished so we exercise the post-validation branches.
+    done_task = MagicMock()
+    done_task.done.return_value = True
+    flow._validate_task = done_task
     result = await flow.async_step_validate_token(None)
     assert result["type"] == FlowResultType.SHOW_PROGRESS_DONE
     assert result["step_id"] == expected_next_step_id
+    if token_flow_error is None and not installations:
+        assert flow._token_flow_error == "no_installations"
+
+
+@pytest.mark.asyncio
+async def test_async_step_validate_token_keeps_progress_while_task_running():
+    """While the validate task is in flight, keep showing progress (issue #37)."""
+    flow = _make_flow()
+    pending_task = MagicMock()
+    pending_task.done.return_value = False
+    flow._validate_task = pending_task
+    flow._installations = []
+    flow._token_flow_error = None
+
+    result = await flow.async_step_validate_token(None)
+
+    assert result["type"] == FlowResultType.SHOW_PROGRESS
+    flow.async_show_progress.assert_called_with(
+        step_id="validate_token",
+        progress_action="validate_token",
+        progress_task=pending_task,
+    )
+
+
+@pytest.mark.asyncio
+async def test_async_validate_token_task_cancelled_sets_error():
+    """Cancelled validation must not leave an empty installations picker."""
+    flow = _make_flow()
+    flow._pending_token = "token"
+
+    async def _raise_cancelled(*_args, **_kwargs):
+        raise asyncio.CancelledError()
+
+    with patch(
+        "custom_components.jullix.config_flow._validate_token",
+        new_callable=AsyncMock,
+        side_effect=_raise_cancelled,
+    ):
+        await flow._async_validate_token_task()
+
+    assert flow._token_flow_error == "cannot_connect"
+    assert flow._installations == []
 
 
 @pytest.mark.asyncio

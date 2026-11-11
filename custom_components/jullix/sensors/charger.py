@@ -34,8 +34,7 @@ def create_charger_entities(
             install_name,
             ch.mac,
             ch.display_name,
-            model=model,
-        )
+            model=model, hass=coordinator.hass)
         entities.append(
             JullixChargerSensor(
                 coordinator=coordinator,

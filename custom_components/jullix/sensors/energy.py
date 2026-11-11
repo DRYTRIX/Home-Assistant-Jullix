@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -9,6 +10,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.const import UnitOfEnergy, UnitOfPower
+from homeassistant.util import dt as dt_util
 
 from ..coordinator import JullixDataUpdateCoordinator
 from ..device_helpers import (
@@ -19,7 +21,14 @@ from ..device_helpers import (
     device_info_system,
 )
 from ..models import JullixInstallationSnapshot
-from ..models.util import extract_plug_energy_total_kwh, extract_statistics_total_kwh, safe_float
+from ..models.util import (
+    extract_plug_energy_total_kwh,
+    extract_statistics_total_kwh,
+    flatten_statistics_period,
+    safe_float,
+    statistics_periods,
+    truncate_state,
+)
 from .base import JullixSensor, get_installation_snapshot
 
 _SUMMARY_LINES: dict[str, tuple[str, str]] = {
@@ -56,7 +65,7 @@ def create_summary_power_entities(
     """Summary line powers (grid/solar/home/battery from summary endpoint)."""
     snap = get_installation_snapshot(coordinator, install_id)
     entities: list[JullixSensor] = []
-    power_dev = device_info_power_overview(install_id, install_name)
+    power_dev = device_info_power_overview(install_id, install_name, hass=coordinator.hass)
     for key in ("grid", "solar", "home", "battery"):
         label, tkey = _SUMMARY_LINES[key]
         val = snap.power_summary.power_watts(key)
@@ -92,7 +101,7 @@ def create_solar_home_entities(
                 source="solar",
                 unique_id=f"{install_id}_solar_power",
                 name="Solar power",
-                device_info=device_info_solar(install_id, install_name),
+                device_info=device_info_solar(install_id, install_name, hass=coordinator.hass),
                 translation_key="detail_solar_power",
             )
         )
@@ -104,7 +113,7 @@ def create_solar_home_entities(
                 install_name=install_name,
                 unique_id=f"{install_id}_solar_energy_production",
                 name="Solar production energy",
-                device_info=device_info_solar(install_id, install_name),
+                device_info=device_info_solar(install_id, install_name, hass=coordinator.hass),
                 translation_key="solar_production_energy",
             )
         )
@@ -117,7 +126,7 @@ def create_solar_home_entities(
                 source="home",
                 unique_id=f"{install_id}_home_power",
                 name="Consumption power",
-                device_info=device_info_home_consumption(install_id, install_name),
+                device_info=device_info_home_consumption(install_id, install_name, hass=coordinator.hass),
                 translation_key="detail_home_power",
             )
         )
@@ -131,7 +140,7 @@ def create_metering_entities(
 ) -> list[JullixSensor]:
     snap = get_installation_snapshot(coordinator, install_id)
     entities: list[JullixSensor] = []
-    sys_dev = device_info_system(install_id, install_name)
+    sys_dev = device_info_system(install_id, install_name, hass=coordinator.hass)
     for i, ch in enumerate(snap.metering.channels):
         ch_id = ch.get("id", ch.get("channel_id", str(i)))
         val = ch.get("value", ch.get("power", ch.get("energy")))
@@ -169,8 +178,7 @@ def create_plug_entities(
             install_name,
             plug.mac,
             plug.display_name,
-            model=model,
-        )
+            model=model, hass=coordinator.hass)
         entities.append(
             JullixPlugSensor(
                 coordinator=coordinator,
@@ -215,7 +223,7 @@ def maybe_plug_energy_today_entity(
         install_name=install_name,
         unique_id=f"{install_id}_plug_energy_today",
         name="Plug energy today",
-        device_info=device_info_system(install_id, install_name),
+        device_info=device_info_system(install_id, install_name, hass=coordinator.hass),
         translation_key="plug_energy_today",
     )
 
@@ -227,7 +235,7 @@ def create_statistics_entities(
 ) -> list[JullixSensor]:
     snap = get_installation_snapshot(coordinator, install_id)
     entities: list[JullixSensor] = []
-    sys_dev = device_info_system(install_id, install_name)
+    sys_dev = device_info_system(install_id, install_name, hass=coordinator.hass)
     stat_specs = (
         ("statistics_energy_daily", "Energy daily", "statistics_energy_daily"),
         ("statistics_energy_monthly", "Energy monthly", "statistics_energy_monthly"),
@@ -259,7 +267,7 @@ def maybe_weather_alarm_entity(
     snap = get_installation_snapshot(coordinator, install_id)
     if snap.weather_alarm is None:
         return None
-    sys_dev = device_info_system(install_id, install_name)
+    sys_dev = device_info_system(install_id, install_name, hass=coordinator.hass)
     return JullixWeatherAlarmSensor(
         coordinator=coordinator,
         install_id=install_id,
@@ -279,7 +287,7 @@ def maybe_tariff_entity(
     snap = get_installation_snapshot(coordinator, install_id)
     if snap.tariff is None:
         return None
-    sys_dev = device_info_system(install_id, install_name)
+    sys_dev = device_info_system(install_id, install_name, hass=coordinator.hass)
     return JullixTariffSensor(
         coordinator=coordinator,
         install_id=install_id,
@@ -299,7 +307,7 @@ def maybe_algorithm_entity(
     snap = get_installation_snapshot(coordinator, install_id)
     if snap.algorithm_overview is None:
         return None
-    sys_dev = device_info_system(install_id, install_name)
+    sys_dev = device_info_system(install_id, install_name, hass=coordinator.hass)
     return JullixAlgorithmOverviewSensor(
         coordinator=coordinator,
         install_id=install_id,
@@ -319,7 +327,7 @@ def maybe_weather_forecast_entity(
     snap = get_installation_snapshot(coordinator, install_id)
     if snap.weather_forecast is None:
         return None
-    sys_dev = device_info_system(install_id, install_name)
+    sys_dev = device_info_system(install_id, install_name, hass=coordinator.hass)
     return JullixWeatherForecastSensor(
         coordinator=coordinator,
         install_id=install_id,
@@ -539,20 +547,97 @@ class JullixPlugEnergyTodaySensor(JullixSensor):
         self._attr_native_value = kwh
 
 
+def _unwrap_tariff_payload(tariff: Any) -> Any:
+    """Unwrap {status, tariff: {...}} envelopes from the tariff API."""
+    if isinstance(tariff, dict) and isinstance(tariff.get("tariff"), dict):
+        return tariff["tariff"]
+    return tariff
+
+
+def _tariff_state(tariff: Any) -> str | None:
+    """Human-readable tariff state, truncated for HA."""
+    tariff = _unwrap_tariff_payload(tariff)
+    if isinstance(tariff, dict):
+        for key in ("name", "description", "tariff_name"):
+            val = tariff.get(key)
+            if val is not None:
+                return truncate_state(val)
+        return truncate_state(tariff)
+    if tariff is not None:
+        return truncate_state(tariff)
+    return None
+
+
+def _parse_weather_row_time(value: Any) -> datetime | None:
+    """Parse a weather row timestamp to aware datetime."""
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        ts = float(value)
+        if ts > 1e12:
+            ts /= 1000.0
+        return datetime.fromtimestamp(ts, tz=timezone.utc)
+    if isinstance(value, str):
+        parsed = dt_util.parse_datetime(value)
+        if parsed is None:
+            return None
+        if parsed.tzinfo is None:
+            return parsed.replace(tzinfo=timezone.utc)
+        return parsed
+    return None
+
+
+def _weather_from_hourly_list(rows: list[Any]) -> tuple[Any, dict[str, Any]]:
+    """Pick latest hourly weather row with time <= now; return state + attrs."""
+    now = dt_util.utcnow()
+    best: dict[str, Any] | None = None
+    best_ts: datetime | None = None
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        ts = _parse_weather_row_time(row.get("time"))
+        if ts is None or ts > now:
+            continue
+        if best_ts is None or ts >= best_ts:
+            best = row
+            best_ts = ts
+    if best is None:
+        # Fall back to last dict row if none are in the past
+        for row in reversed(rows):
+            if isinstance(row, dict):
+                best = row
+                break
+    if best is None:
+        return None, {}
+    data = best.get("data") if isinstance(best.get("data"), dict) else best
+    if not isinstance(data, dict):
+        return truncate_state(data), {}
+    state = data.get("temperature_2m", data.get("temperature"))
+    attrs: dict[str, Any] = {}
+    for src, dest in (
+        ("cloud_cover", "cloud"),
+        ("cloud", "cloud"),
+        ("precipitation", "precipitation"),
+        ("relative_humidity_2m", "humidity"),
+        ("humidity", "humidity"),
+        ("wind_speed_10m", "wind"),
+        ("wind", "wind"),
+        ("shortwave_radiation", "radiation"),
+        ("radiation", "radiation"),
+    ):
+        if src in data and dest not in attrs:
+            attrs[dest] = data.get(src)
+    if best_ts is not None:
+        attrs["time"] = best_ts.isoformat()
+    return (truncate_state(state) if state is not None else None), attrs
+
+
 class JullixTariffSensor(JullixSensor):
     """Active tariff name."""
 
     def _update_from_snapshot(self) -> None:
         snap = get_installation_snapshot(self.coordinator, self._install_id)
-        tariff = snap.tariff
-        if isinstance(tariff, dict):
-            self._attr_native_value = tariff.get(
-                "name", tariff.get("tariff_name", str(tariff))
-            )
-        elif tariff is not None:
-            self._attr_native_value = str(tariff)
-        else:
-            self._attr_native_value = None
+        self._attr_native_value = _tariff_state(snap.tariff)
 
 
 class JullixAlgorithmOverviewSensor(JullixSensor):
@@ -562,30 +647,53 @@ class JullixAlgorithmOverviewSensor(JullixSensor):
         snap = get_installation_snapshot(self.coordinator, self._install_id)
         overview = snap.algorithm_overview
         if isinstance(overview, dict):
-            self._attr_native_value = overview.get(
-                "status", overview.get("state", str(overview))
+            self._attr_native_value = truncate_state(
+                overview.get("status", overview.get("state", overview))
             )
         elif overview is not None:
-            self._attr_native_value = str(overview)
+            self._attr_native_value = truncate_state(overview)
         else:
             self._attr_native_value = None
 
 
 class JullixWeatherForecastSensor(JullixSensor):
-    """Weather forecast summary."""
+    """Weather forecast summary (current hourly temperature when list-shaped)."""
 
     def _update_from_snapshot(self) -> None:
         snap = get_installation_snapshot(self.coordinator, self._install_id)
         weather = snap.weather_forecast
+        # Unwrap common envelopes
         if isinstance(weather, dict):
-            self._attr_native_value = weather.get(
-                "condition",
-                weather.get("description", weather.get("summary", str(weather))),
+            for key in ("forecast", "data", "hours", "hourly"):
+                inner = weather.get(key)
+                if isinstance(inner, list):
+                    weather = inner
+                    break
+        if isinstance(weather, list):
+            state, attrs = _weather_from_hourly_list(weather)
+            self._attr_native_value = state
+            self._attr_extra_state_attributes = attrs
+            return
+        if isinstance(weather, dict):
+            self._attr_native_value = truncate_state(
+                weather.get(
+                    "condition",
+                    weather.get(
+                        "description",
+                        weather.get(
+                            "summary",
+                            weather.get("temperature_2m", weather),
+                        ),
+                    ),
+                )
             )
+            self._attr_extra_state_attributes = {}
         elif weather is not None:
-            self._attr_native_value = str(weather)
+            self._attr_native_value = truncate_state(weather)
+            self._attr_extra_state_attributes = {}
         else:
             self._attr_native_value = None
+            self._attr_extra_state_attributes = {}
 
 
 class JullixWeatherAlarmSensor(JullixSensor):
@@ -601,7 +709,7 @@ class JullixWeatherAlarmSensor(JullixSensor):
             self._attr_native_value = "on"
             self._attr_extra_state_attributes = alarm
         elif alarm:
-            self._attr_native_value = str(alarm)
+            self._attr_native_value = truncate_state(alarm)
             self._attr_extra_state_attributes = {}
         else:
             self._attr_native_value = "off"
@@ -640,3 +748,11 @@ class JullixStatisticsSensor(JullixSensor):
         snap = get_installation_snapshot(self.coordinator, self._install_id)
         raw = getattr(snap, self._data_key, None)
         self._attr_native_value = extract_statistics_total_kwh(raw)
+        period1, period2 = statistics_periods(raw)
+        attrs: dict[str, Any] = {}
+        if period1 is not None:
+            attrs.update(flatten_statistics_period(period1))
+        if period2 is not None:
+            for key, val in flatten_statistics_period(period2).items():
+                attrs[f"previous_{key}"] = val
+        self._attr_extra_state_attributes = attrs

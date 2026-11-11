@@ -39,7 +39,7 @@ async def async_setup_entry(
             if snap
             else f"Installation {install_id[:8]}"
         )
-        sys_dev = device_info_system(install_id, install_name)
+        sys_dev = device_info_system(install_id, install_name, hass=coordinator.hass)
         entities.append(
             JullixRunAlgorithmButton(
                 coordinator=coordinator,

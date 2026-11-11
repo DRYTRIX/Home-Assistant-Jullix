@@ -60,8 +60,7 @@ async def async_setup_entry(
                 install_name,
                 ch.mac,
                 ch.display_name,
-                model=model,
-            )
+                model=model, hass=coordinator.hass)
             entities.append(
                 JullixChargerMaxPowerNumber(
                     coordinator=coordinator,
@@ -108,6 +107,7 @@ def _discovered_number_entities(
             ch.mac,
             ch.display_name,
             model=str(model) if model else None,
+            hass=coordinator.hass,
         )
         entities.append(
             JullixChargerMaxPowerNumber(
@@ -177,11 +177,15 @@ class JullixChargerMaxPowerNumber(
             config = ctrl.get("config", ctrl)
             if isinstance(config, dict):
                 val = config.get("max_power")
+                if val is None:
+                    val = config.get("default_max_mode_power")
         if val is not None:
             try:
                 self._attr_native_value = float(val)
             except (TypeError, ValueError):
-                pass
+                self._attr_native_value = None
+        else:
+            self._attr_native_value = None
         super()._handle_coordinator_update()
 
     async def async_set_native_value(self, value: float) -> None:

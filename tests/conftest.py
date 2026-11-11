@@ -35,7 +35,17 @@ if not _HA_AVAILABLE and "homeassistant" not in sys.modules:
     def _utcnow() -> datetime:
         return datetime.now(timezone.utc)
 
+    def _parse_datetime(value: str) -> datetime | None:
+        text = value.strip()
+        if text.endswith("Z"):
+            text = text[:-1] + "+00:00"
+        try:
+            return datetime.fromisoformat(text)
+        except ValueError:
+            return None
+
     _ha_util_dt.utcnow = _utcnow
+    _ha_util_dt.parse_datetime = _parse_datetime
     _ha_util = types.ModuleType("homeassistant.util")
     _ha_util.dt = _ha_util_dt
     sys.modules["homeassistant.util"] = _ha_util
@@ -67,6 +77,16 @@ if not _HA_AVAILABLE and "homeassistant" not in sys.modules:
     _ha_helpers_device_registry = types.ModuleType("homeassistant.helpers.device_registry")
     _ha_helpers_device_registry.DeviceEntry = MagicMock()
     _ha_helpers_device_registry.DeviceInfo = MagicMock()
+
+    def _async_get_device_registry(_hass: object = None) -> MagicMock:
+        registry = MagicMock()
+        registry.async_get_device = MagicMock(return_value=None)
+        registry.async_get_or_create = MagicMock(
+            return_value=MagicMock(id="hub-device-id")
+        )
+        return registry
+
+    _ha_helpers_device_registry.async_get = _async_get_device_registry
     _ha_helpers.device_registry = _ha_helpers_device_registry
 
     _ha_helpers_typing = types.ModuleType("homeassistant.helpers.typing")

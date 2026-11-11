@@ -16,7 +16,7 @@ def create_automation_helper_entities(
     install_id: str,
     install_name: str,
 ) -> list[JullixSensor]:
-    sys_dev = device_info_system(install_id, install_name)
+    sys_dev = device_info_system(install_id, install_name, hass=coordinator.hass)
     return [
         JullixRecommendedChargeTimeSensor(
             coordinator=coordinator,

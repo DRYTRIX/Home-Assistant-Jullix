@@ -22,7 +22,7 @@ def create_grid_entities(
     """Grid detail power + captar when data is present."""
     snap = get_installation_snapshot(coordinator, install_id)
     entities: list[JullixSensor] = []
-    grid_dev = device_info_grid(install_id, install_name)
+    grid_dev = device_info_grid(install_id, install_name, hass=coordinator.hass)
 
     if snap.grid_detail.power_watts() is not None:
         entities.append(

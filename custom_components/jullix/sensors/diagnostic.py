@@ -18,7 +18,7 @@ def create_diagnostic_entities(
     install_name: str,
 ) -> list[SensorEntity]:
     """Connection health, latency, last success timestamp."""
-    sys_dev = device_info_system(install_id, install_name)
+    sys_dev = device_info_system(install_id, install_name, hass=coordinator.hass)
     return [
         JullixConnectionHealthSensor(
             coordinator=coordinator,

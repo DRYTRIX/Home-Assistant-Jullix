@@ -48,7 +48,7 @@ Metering entities use **hardcoded names** (`Meter {id}`) rather than `translatio
 | Automation helpers | Recommended charge time, cheap energy window, current hour price | **Cost and savings sensors** (with hourly price data) |
 | Peak tariff | Binary sensor | **Cost and savings sensors** |
 | Statistics | Daily / monthly / yearly energy statistics | **Energy statistics sensors** |
-| Rolling statistic | Energy rolling 7 days (`statistics_energy_7d`) | **Energy statistics sensors** (entity lives in insights module but requires the statistics option) |
+| Rolling statistic | ~~Energy rolling 7 days~~ (removed in 1.12.1; API has no dated daily rows) | — |
 | Insights | Self-consumption, solar utilization, grid dependency (% estimates) | **Energy insight sensors** |
 
 ## Tariff, weather, algorithm

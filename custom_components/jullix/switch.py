@@ -54,8 +54,7 @@ async def async_setup_entry(
                     install_name,
                     ch.mac,
                     ch.display_name,
-                    model=model,
-                )
+                    model=model, hass=coordinator.hass)
                 entities.append(
                     JullixChargerSwitch(
                         coordinator=coordinator,
@@ -81,8 +80,7 @@ async def async_setup_entry(
                     install_name,
                     plug.mac,
                     plug.display_name,
-                    model=model,
-                )
+                    model=model, hass=coordinator.hass)
                 entities.append(
                     JullixPlugSwitch(
                         coordinator=coordinator,
@@ -126,7 +124,12 @@ def _discovered_switch_entities(
             if model is not None:
                 model = str(model)
             ch_dev = device_info_charger(
-                install_id, install_name, ch.mac, ch.display_name, model=str(model) if model else None
+                install_id,
+                install_name,
+                ch.mac,
+                ch.display_name,
+                model=str(model) if model else None,
+                hass=coordinator.hass,
             )
             entities.append(
                 JullixChargerSwitch(
@@ -151,6 +154,7 @@ def _discovered_switch_entities(
                 plug.mac,
                 plug.display_name,
                 model=str(model) if model else None,
+                hass=coordinator.hass,
             )
             entities.append(
                 JullixPlugSwitch(
@@ -197,8 +201,7 @@ class JullixSwitch(CoordinatorEntity[JullixDataUpdateCoordinator], SwitchEntity)
         if translation_key is not None:
             self._attr_translation_key = translation_key
         self._attr_device_info = device_info or device_info_hub(
-            install_id, install_name
-        )
+            install_id, install_name, hass=coordinator.hass)
 
 
 class JullixChargerSwitch(JullixSwitch):
@@ -314,9 +317,9 @@ def _is_enabled(obj: dict[str, Any]) -> bool:
         return True
     if obj.get("on") is True:
         return True
-    if obj.get("state", "").lower() in ("on", "charging", "enabled"):
+    if str(obj.get("state") or "").lower() in ("on", "charging", "enabled"):
         return True
-    if obj.get("status", "").lower() in ("on", "charging", "enabled"):
+    if str(obj.get("status") or "").lower() in ("on", "charging", "enabled"):
         return True
     if obj.get("plug_state") is True:
         return True

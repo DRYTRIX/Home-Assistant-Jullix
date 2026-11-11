@@ -29,8 +29,7 @@ def create_battery_entities(
 
     for slot in snap.battery_slots:
         bat_dev = device_info_battery(
-            install_id, install_name, slot.index, multi
-        )
+            install_id, install_name, slot.index, multi, hass=coordinator.hass)
         if slot.soc is not None:
             entities.append(
                 JullixBatterySocSensor(

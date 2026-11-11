@@ -130,6 +130,78 @@ def extract_plug_energy_total_kwh(value: Any) -> float | None:
     return None
 
 
+def truncate_state(value: Any, max_len: int = 255) -> str | None:
+    """Coerce to string for entity state; cap length for HA's 255-char limit."""
+    if value is None:
+        return None
+    text = str(value)
+    if len(text) > max_len:
+        return text[:max_len]
+    return text
+
+
+def flatten_statistics_period(period: Any) -> dict[str, Any]:
+    """Flatten a statistics period object into attribute-friendly keys."""
+    if not isinstance(period, dict):
+        return {}
+    out: dict[str, Any] = {}
+
+    home = period.get("home")
+    if isinstance(home, dict):
+        if "energy" in home:
+            out["home"] = home.get("energy")
+    elif home is not None:
+        out["home"] = home
+
+    solar = period.get("solar")
+    if isinstance(solar, dict):
+        if "energy" in solar:
+            out["solar_energy"] = solar.get("energy")
+    elif solar is not None:
+        out["solar_energy"] = solar
+
+    grid = period.get("grid")
+    if isinstance(grid, dict):
+        if "imported" in grid:
+            out["grid_imported"] = grid.get("imported")
+        if "injected" in grid:
+            out["grid_injected"] = grid.get("injected")
+
+    battery = period.get("battery")
+    if isinstance(battery, dict):
+        if "energy_charged" in battery:
+            out["battery_energy_charged"] = battery.get("energy_charged")
+        if "energy_discharged" in battery:
+            out["battery_energy_discharged"] = battery.get("energy_discharged")
+
+    car = period.get("car")
+    if isinstance(car, dict):
+        if "energy_charged" in car:
+            out["car_energy_charged"] = car.get("energy_charged")
+        if "energy_discharged" in car:
+            out["car_energy_discharged"] = car.get("energy_discharged")
+
+    for key in ("gas", "heatpump", "water"):
+        if key in period:
+            out[key] = period.get(key)
+
+    return out
+
+
+def _period1_home_energy(value: dict[str, Any]) -> float | None:
+    """Extract period1.home.energy from current statistics shape."""
+    stats = value.get("statistics", value)
+    if not isinstance(stats, dict):
+        return None
+    period1 = stats.get("period1")
+    if not isinstance(period1, dict):
+        return None
+    home = period1.get("home")
+    if isinstance(home, dict):
+        return safe_float(home.get("energy"))
+    return safe_float(home)
+
+
 def extract_statistics_total_kwh(value: Any) -> float | None:
     """Total kWh from statistics API response."""
     if value is None:
@@ -137,6 +209,9 @@ def extract_statistics_total_kwh(value: Any) -> float | None:
     if isinstance(value, (int, float)):
         return float(value)
     if isinstance(value, dict):
+        period1_home = _period1_home_energy(value)
+        if period1_home is not None:
+            return period1_home
         total = value.get("total", value.get("value", value.get("sum")))
         if total is not None:
             return safe_float(total)
@@ -150,6 +225,12 @@ def extract_statistics_total_kwh(value: Any) -> float | None:
                     for x in value[key]
                 )
                 return s if s else None
+        # Nested envelope without period1 handled above
+        if "statistics" in value and isinstance(value["statistics"], dict):
+            nested = value["statistics"]
+            total = nested.get("total", nested.get("value", nested.get("sum")))
+            if total is not None:
+                return safe_float(total)
     if isinstance(value, list):
         s = sum(
             safe_float(x.get("value", x.get("energy", x)) if isinstance(x, dict) else x)
@@ -158,3 +239,18 @@ def extract_statistics_total_kwh(value: Any) -> float | None:
         )
         return s if s else None
     return None
+
+
+def statistics_periods(value: Any) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    """Return (period1, period2) dicts from a statistics API response."""
+    if not isinstance(value, dict):
+        return None, None
+    stats = value.get("statistics", value)
+    if not isinstance(stats, dict):
+        return None, None
+    p1 = stats.get("period1")
+    p2 = stats.get("period2")
+    return (
+        p1 if isinstance(p1, dict) else None,
+        p2 if isinstance(p2, dict) else None,
+    )

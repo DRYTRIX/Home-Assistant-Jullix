@@ -17,10 +17,15 @@ def _status_state(payload: Any) -> str | None:
     """Mirror of charger_extended._status_state."""
     data = unwrap_data(payload)
     if isinstance(data, dict):
-        for key in ("status", "state", "connection", "mode"):
+        for key in ("status", "state", "mode"):
             val = data.get(key)
-            if val is not None:
+            if val is not None and not isinstance(val, dict):
                 return str(val)
+        connection = data.get("connection")
+        if isinstance(connection, dict) and connection.get("status") is not None:
+            return str(connection.get("status"))
+        if connection is not None and not isinstance(connection, dict):
+            return str(connection)
     return None
 
 
@@ -39,13 +44,19 @@ def _events_count(payload: Any) -> int | None:
 
 def _charger_energy_kwh(payload: Any) -> float | None:
     """Mirror of charger_extended._charger_energy_kwh."""
+    if payload is None:
+        return None
     data = unwrap_data(payload)
     if isinstance(data, dict):
         for key in ("energy", "energy_kwh", "total", "kwh", "total_energy"):
-            v = safe_float(data.get(key))
-            if v is not None:
-                return v
-    if isinstance(data, list) and data:
+            if key in data:
+                v = safe_float(data.get(key))
+                return v if v is not None else 0.0
+        if not data or data.get("energies") == [] or data.get("data") == []:
+            return 0.0
+    if isinstance(data, list):
+        if not data:
+            return 0.0
         total = 0.0
         found = False
         for item in data:
@@ -56,7 +67,7 @@ def _charger_energy_kwh(payload: Any) -> float | None:
                 if v is not None:
                     total += v
                     found = True
-        return total if found else None
+        return total if found else 0.0
     return None
 
 
@@ -66,6 +77,10 @@ def test_status_state_unwraps_and_finds_status_key():
 
 def test_status_state_checks_key_priority_order():
     assert _status_state({"state": "idle", "connection": "online"}) == "idle"
+
+
+def test_status_state_nested_connection_status():
+    assert _status_state({"connection": {"status": "online"}}) == "online"
 
 
 def test_status_state_non_dict_returns_none():
@@ -118,12 +133,12 @@ def test_charger_energy_kwh_sums_list_of_dicts():
     assert _charger_energy_kwh(payload) == 4.5
 
 
-def test_charger_energy_kwh_empty_list_returns_none():
-    assert _charger_energy_kwh([]) is None
+def test_charger_energy_kwh_empty_list_returns_zero():
+    assert _charger_energy_kwh([]) == 0.0
 
 
-def test_charger_energy_kwh_list_without_numeric_fields_returns_none():
-    assert _charger_energy_kwh([{"foo": "bar"}]) is None
+def test_charger_energy_kwh_list_without_numeric_fields_returns_zero():
+    assert _charger_energy_kwh([{"foo": "bar"}]) == 0.0
 
 
 def test_charger_energy_kwh_none_returns_none():

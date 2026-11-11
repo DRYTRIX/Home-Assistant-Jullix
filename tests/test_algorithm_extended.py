@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from custom_components.jullix.models.util import unwrap_data
+from custom_components.jullix.models.util import truncate_state, unwrap_data
 
 
 def _dict_summary(payload: Any, *keys: str) -> str | None:
@@ -20,12 +20,29 @@ def _dict_summary(payload: Any, *keys: str) -> str | None:
         for key in keys:
             val = data.get(key)
             if val is not None:
-                return str(val)
+                return truncate_state(val)
         if len(data) == 1:
-            return str(next(iter(data.values())))
+            return truncate_state(next(iter(data.values())))
     elif payload is not None:
-        return str(payload)
+        return truncate_state(payload)
     return None
+
+
+def _pvpredict_empty(payload: Any) -> bool:
+    """Mirror of algorithm_extended._pvpredict_empty."""
+    data = unwrap_data(payload)
+    if not isinstance(data, dict):
+        return payload is not None and payload == []
+    predict = data.get("predict", data.get("forecast"))
+    solar = data.get("solar")
+    run = data.get("run")
+    predict_empty = isinstance(predict, list) and len(predict) == 0
+    solar_empty = solar is None or (isinstance(solar, list) and len(solar) == 0)
+    if predict_empty and solar_empty:
+        return True
+    if predict_empty and run is None and "predict" in data:
+        return True
+    return False
 
 
 def test_dict_summary_none_returns_none():
@@ -61,3 +78,16 @@ def test_dict_summary_empty_dict_returns_none():
 def test_dict_summary_non_dict_payload_stringifies_original():
     """A non-dict payload (e.g. a bare list) is stringified as-is."""
     assert _dict_summary([1, 2, 3], "status") == "[1, 2, 3]"
+
+
+def test_dict_summary_truncates_long_state():
+    """Unexpected huge payloads must stay within HA's 255-char state limit."""
+    long = "y" * 400
+    assert len(_dict_summary(long, "status") or "") == 255
+
+
+def test_pvpredict_empty_shape():
+    """Empty predict/solar with null run is treated as empty prediction."""
+    assert _pvpredict_empty({"data": {"predict": [], "solar": []}, "run": None}) is True
+    assert _pvpredict_empty({"predict": [], "solar": [], "run": None}) is True
+    assert _pvpredict_empty({"predict": [1.0], "solar": []}) is False

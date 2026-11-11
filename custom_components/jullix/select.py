@@ -55,7 +55,7 @@ async def async_setup_entry(
                     install_name=install_name,
                     unique_id=f"{install_id}_tariff_select",
                     name="Tariff",
-                    device_info=device_info_system(install_id, install_name),
+                    device_info=device_info_system(install_id, install_name, hass=coordinator.hass),
                     translation_key="tariff_select",
                 )
             )
@@ -72,8 +72,7 @@ async def async_setup_entry(
                 install_name,
                 ch.mac,
                 ch.display_name,
-                model=model,
-            )
+                model=model, hass=coordinator.hass)
             entities.append(
                 JullixChargerModeSelect(
                     coordinator=coordinator,
@@ -121,8 +120,7 @@ def _discovered_select_entities(
             install_name,
             ch.mac,
             ch.display_name,
-            model=model,
-        )
+            model=model, hass=coordinator.hass)
         entities.append(
             JullixChargerModeSelect(
                 coordinator=coordinator,
@@ -187,6 +185,8 @@ class JullixChargerModeSelect(
             config = ctrl.get("config", ctrl)
             if isinstance(config, dict):
                 current = config.get("mode")
+                if not current:
+                    current = config.get("default_mode")
         if current and str(current).lower() in CHARGER_MODES:
             self._attr_current_option = str(current).lower()
         else:

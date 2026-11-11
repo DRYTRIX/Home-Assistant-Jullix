@@ -82,8 +82,8 @@ def create_local_ems_binary_entities(
 ) -> list[BinarySensorEntity]:
     """Local EMS occupancy, three-phase, and fault binary sensors."""
     multi_battery = len(snap.battery_slots) > 1
-    battery_dev = device_info_battery(install_id, install_name, 0, multi_battery)
-    solar_dev = device_info_solar(install_id, install_name)
+    battery_dev = device_info_battery(install_id, install_name, 0, multi_battery, hass=coordinator.hass)
+    solar_dev = device_info_solar(install_id, install_name, hass=coordinator.hass)
 
     if snap.chargers:
         ch = snap.chargers[0]
@@ -94,6 +94,7 @@ def create_local_ems_binary_entities(
             ch.mac,
             ch.display_name,
             model=str(model) if model is not None else None,
+            hass=coordinator.hass,
         )
     elif snap.charger_detail_rows:
         charger_dev = device_info_charger(
@@ -101,9 +102,10 @@ def create_local_ems_binary_entities(
             install_name,
             "local_0",
             "Charger",
+            hass=coordinator.hass,
         )
     else:
-        charger_dev = device_info_system(install_id, install_name)
+        charger_dev = device_info_system(install_id, install_name, hass=coordinator.hass)
 
     specs: list[
         tuple[
@@ -199,7 +201,7 @@ class JullixPeakTariffBinarySensor(
         super().__init__(coordinator)
         self._install_id = install_id
         self._attr_unique_id = f"{DOMAIN}_{install_id}_peak_tariff"
-        self._attr_device_info = device_info_system(install_id, install_name)
+        self._attr_device_info = device_info_system(install_id, install_name, hass=coordinator.hass)
 
     @callback
     def _handle_coordinator_update(self) -> None:

@@ -25,8 +25,22 @@ class ChargerDevice:
         return dict(self.raw)
 
 
+def _is_virtual_charger(ch: dict[str, Any]) -> bool:
+    """True when the API marks this charger as a virtual / non-physical entry."""
+    if str(ch.get("status") or "").lower() == "virtual":
+        return True
+    connection = ch.get("connection")
+    if isinstance(connection, dict):
+        if str(connection.get("status") or "").lower() == "virtual":
+            return True
+    return False
+
+
 def parse_chargers_list(data: Any) -> tuple[ChargerDevice, ...]:
-    """Normalize get_chargers response to ChargerDevice tuple."""
+    """Normalize get_chargers response to ChargerDevice tuple.
+
+    Virtual chargers (connection.status == \"virtual\") are skipped.
+    """
     out: list[ChargerDevice] = []
     try:
         if isinstance(data, list):
@@ -39,6 +53,10 @@ def parse_chargers_list(data: Any) -> tuple[ChargerDevice, ...]:
             items = []
         for i, ch in enumerate(items):
             if not isinstance(ch, dict):
+                continue
+            if _is_virtual_charger(ch):
+                mac = charger_mac_from_dict(ch, i)
+                _LOGGER.debug("Skipping virtual charger %s", mac)
                 continue
             mac = charger_mac_from_dict(ch, i)
             out.append(

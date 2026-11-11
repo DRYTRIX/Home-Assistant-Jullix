@@ -122,12 +122,21 @@ class JullixInstallationSnapshot:
             pw = power_value_to_watts(val)
             if pw is not None:
                 return pw
+            # Known charger with no session / empty power → 0 W
+            if "power" in ch or "current_power" in ch or val is None:
+                # Prefer summary car line when single charger and available
+                if len(self.chargers) == 1:
+                    summary = self.power_summary.power_watts("car")
+                    if summary is not None:
+                        return summary
+                return 0.0
         if 0 <= index < len(self.charger_detail_rows):
             ch = self.charger_detail_rows[index]
             val = ch.get("power", ch.get("current_power"))
             pw = power_value_to_watts(val)
             if pw is not None:
                 return pw
+            return 0.0
         if len(self.chargers) == 1:
             return self.power_summary.power_watts("car")
         return None

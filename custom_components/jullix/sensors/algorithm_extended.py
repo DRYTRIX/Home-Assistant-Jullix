@@ -6,7 +6,7 @@ from typing import Any
 
 from ..coordinator import JullixDataUpdateCoordinator
 from ..device_helpers import device_info_system
-from ..models.util import unwrap_data
+from ..models.util import truncate_state, unwrap_data
 from .base import JullixSensor, get_installation_snapshot
 
 
@@ -16,12 +16,30 @@ def _dict_summary(payload: Any, *keys: str) -> str | None:
         for key in keys:
             val = data.get(key)
             if val is not None:
-                return str(val)
+                return truncate_state(val)
         if len(data) == 1:
-            return str(next(iter(data.values())))
+            return truncate_state(next(iter(data.values())))
     elif payload is not None:
-        return str(payload)
+        return truncate_state(payload)
     return None
+
+
+def _pvpredict_empty(payload: Any) -> bool:
+    """True when pvpredict returned no forecast series."""
+    data = unwrap_data(payload)
+    if not isinstance(data, dict):
+        return payload is not None and payload == []
+    predict = data.get("predict", data.get("forecast"))
+    solar = data.get("solar")
+    run = data.get("run")
+    predict_empty = isinstance(predict, list) and len(predict) == 0
+    solar_empty = solar is None or (isinstance(solar, list) and len(solar) == 0)
+    # Match observed empty shape: {"predict": [], "solar": [], "run": null}
+    if predict_empty and solar_empty:
+        return True
+    if predict_empty and run is None and "predict" in data:
+        return True
+    return False
 
 
 def create_algorithm_extended_entities(
@@ -31,7 +49,7 @@ def create_algorithm_extended_entities(
 ) -> list[JullixSensor]:
     snap = get_installation_snapshot(coordinator, install_id)
     entities: list[JullixSensor] = []
-    sys_dev = device_info_system(install_id, install_name)
+    sys_dev = device_info_system(install_id, install_name, hass=coordinator.hass)
 
     specs: list[tuple[Any, str, str, str]] = [
         (snap.algorithm_settings, "algorithm_settings", "Optimizer settings", "algorithm_settings"),
@@ -79,12 +97,40 @@ class JullixAlgorithmExtendedSensor(JullixSensor):
             **kwargs,
         )
         self._field = field
+        self._attr_available = True
 
     def _update_from_snapshot(self) -> None:
         snap = get_installation_snapshot(self.coordinator, self._install_id)
         payload = getattr(snap, self._field, None)
+        data = unwrap_data(payload)
+
+        if self._field == "algorithm_pvpredict":
+            if _pvpredict_empty(payload):
+                self._attr_available = False
+                self._attr_native_value = None
+                attrs: dict[str, Any] = {"reason": "empty_prediction"}
+                if isinstance(data, dict):
+                    attrs.update({k: data.get(k) for k in ("predict", "solar", "run") if k in data})
+                self._attr_extra_state_attributes = attrs
+                return
+            self._attr_available = True
+            # Prefer a compact summary when series exist
+            if isinstance(data, dict):
+                predict = data.get("predict", data.get("forecast"))
+                if isinstance(predict, list) and predict:
+                    self._attr_native_value = truncate_state(f"{len(predict)} points")
+                    self._attr_extra_state_attributes = (
+                        data if isinstance(data, dict) else {}
+                    )
+                    return
+            self._attr_native_value = _dict_summary(
+                payload, "status", "state", "mode", "enabled", "result", "summary"
+            )
+            self._attr_extra_state_attributes = data if isinstance(data, dict) else {}
+            return
+
+        self._attr_available = True
         self._attr_native_value = _dict_summary(
             payload, "status", "state", "mode", "enabled", "result", "summary"
         )
-        data = unwrap_data(payload)
         self._attr_extra_state_attributes = data if isinstance(data, dict) else {}

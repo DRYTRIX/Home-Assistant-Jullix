@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -146,6 +147,7 @@ class JullixConfigFlow(ConfigFlow, domain=DOMAIN):
         self._config: dict[str, Any] = {}
         self._pending_token: str | None = None
         self._token_flow_error: str | None = None
+        self._validate_task: asyncio.Task[None] | None = None
         self._discovered_host: str | None = None
 
     async def async_step_zeroconf(
@@ -179,12 +181,14 @@ class JullixConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors["base"] = "invalid_token"
             else:
                 self._pending_token = token
+                self._installations = []
+                self._validate_task = self.hass.async_create_task(
+                    self._async_validate_token_task()
+                )
                 return self.async_show_progress(
                     step_id="validate_token",
                     progress_action="validate_token",
-                    progress_task=self.hass.async_create_task(
-                        self._async_validate_token_task()
-                    ),
+                    progress_task=self._validate_task,
                 )
 
         return self.async_show_form(
@@ -209,6 +213,9 @@ class JullixConfigFlow(ConfigFlow, domain=DOMAIN):
         except FlowTokenError as err:
             self._token_flow_error = err.key
             self._installations = []
+        except asyncio.CancelledError:
+            self._token_flow_error = "cannot_connect"
+            self._installations = []
 
     async def async_step_validate_token(
         self, user_input: dict[str, Any] | None = None
@@ -221,7 +228,21 @@ class JullixConfigFlow(ConfigFlow, domain=DOMAIN):
         raises ValueError inside the progress task's done-callback, which is
         swallowed there and never reaches the frontend (the flow just hangs).
         So every branch below hands off via async_show_progress_done instead.
+
+        async_configure can also invoke this step while the progress task is
+        still running; keep showing progress until the task is done.
         """
+        task = self._validate_task
+        if task is not None and not task.done():
+            return self.async_show_progress(
+                step_id="validate_token",
+                progress_action="validate_token",
+                progress_task=task,
+            )
+
+        if not self._token_flow_error and not self._installations:
+            self._token_flow_error = "no_installations"
+
         if self._token_flow_error:
             return self.async_show_progress_done(next_step_id="user")
 

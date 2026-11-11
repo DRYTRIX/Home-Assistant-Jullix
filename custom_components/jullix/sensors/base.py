@@ -56,8 +56,7 @@ class JullixSensor(CoordinatorEntity[JullixDataUpdateCoordinator], SensorEntity)
         if translation_key is not None:
             self._attr_translation_key = translation_key
         self._attr_device_info = device_info or device_info_hub(
-            install_id, install_name
-        )
+            install_id, install_name, hass=coordinator.hass)
 
     @callback
     def _handle_coordinator_update(self) -> None:

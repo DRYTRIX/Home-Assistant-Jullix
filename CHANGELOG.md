@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.12.1] - 2026-11-11
+
+### Fixed
+
+- **Statistics sensors** parse the current `period1`/`period2` API shape so daily/monthly/yearly home energy and breakdown attributes populate instead of staying unknown.
+- **Charger switch** no longer crashes when API `state`/`status` is an integer.
+- **Tariff sensor** unwraps `{"status","tariff":{...}}` envelopes and keeps state under 255 characters.
+- **Weather forecast sensor** reads hourly `{time, data}` lists (temperature + attributes) instead of stringifying the whole payload.
+- **Device registry:** child devices use `via_device_id` after hub registration (clears HA `via_device` deprecation warnings).
+- **Session energy / cost** state classes corrected (`TOTAL_INCREASING` / `TOTAL`) for long-term statistics.
+- **Virtual chargers** skipped at discovery; idle charger energy/power report `0`; mode/max power fall back to config defaults.
+- **Solar prediction** marks unavailable with `reason=empty_prediction` when pvpredict returns empty series.
+
+### Removed
+
+- **Energy rolling 7 days** entity — the statistics API does not return dated daily rows this sensor expected. Existing entities can be removed from the entity registry after upgrade. Delete any leftover virtual-charger device in the UI if present.
+
 ## [1.12.0] - 2026-06-26
 
 ### Added

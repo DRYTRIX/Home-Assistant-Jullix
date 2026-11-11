@@ -199,6 +199,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "session_history": session_hist,
     }
 
+    # Register hub devices before platforms so child DeviceInfo can use via_device_id.
+    from .device_helpers import register_hub_device
+
+    for install_id in install_ids:
+        snap = coordinator.data.get(install_id)
+        install_name = (
+            snap.installation_display_name(install_id) if snap else str(install_id)
+        )
+        register_hub_device(
+            hass,
+            config_entry_id=entry.entry_id,
+            install_id=str(install_id),
+            install_name=install_name,
+        )
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     for install_id in install_ids:

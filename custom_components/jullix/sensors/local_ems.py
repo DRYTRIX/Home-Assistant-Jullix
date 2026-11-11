@@ -33,6 +33,8 @@ def _local_charger_device(
     install_id: str,
     install_name: str,
     snap: Any,
+    *,
+    hass: Any = None,
 ) -> DeviceInfo:
     if snap.chargers:
         ch = snap.chargers[0]
@@ -43,6 +45,7 @@ def _local_charger_device(
             ch.mac,
             ch.display_name,
             model=str(model) if model is not None else None,
+            hass=hass,
         )
     if snap.charger_detail_rows:
         return device_info_charger(
@@ -50,8 +53,9 @@ def _local_charger_device(
             install_name,
             "local_0",
             "Charger",
+            hass=hass,
         )
-    return device_info_system(install_id, install_name)
+    return device_info_system(install_id, install_name, hass=hass)
 
 
 def create_local_ems_entities(
@@ -61,9 +65,11 @@ def create_local_ems_entities(
 ) -> list[JullixSensor]:
     """Register local EMS sensors when a Jullix-Direct host is configured."""
     snap = get_installation_snapshot(coordinator, install_id)
-    grid_dev = device_info_grid(install_id, install_name)
-    sys_dev = device_info_system(install_id, install_name)
-    ch_dev = _local_charger_device(install_id, install_name, snap)
+    grid_dev = device_info_grid(install_id, install_name, hass=coordinator.hass)
+    sys_dev = device_info_system(install_id, install_name, hass=coordinator.hass)
+    ch_dev = _local_charger_device(
+        install_id, install_name, snap, hass=coordinator.hass
+    )
 
     specs: list[tuple[str, str, str, DeviceInfo, Callable[[LocalEmsSnapshot], Any]]] = [
         (

@@ -19,7 +19,7 @@ def create_cost_entities(
 ) -> list[JullixSensor]:
     snap = get_installation_snapshot(coordinator, install_id)
     entities: list[JullixSensor] = []
-    sys_dev = device_info_system(install_id, install_name)
+    sys_dev = device_info_system(install_id, install_name, hass=coordinator.hass)
     raw = snap.cost_savings.raw
     cost_specs = (
         ("savings", "Savings", "cost_savings"),

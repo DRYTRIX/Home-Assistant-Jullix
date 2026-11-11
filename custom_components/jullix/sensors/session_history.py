@@ -30,7 +30,7 @@ def create_session_history_entities(
             recorder=recorder,
             unique_id=f"{install_id}_last_session_energy",
             name="Last session energy",
-            device_info=device_info_system(install_id, install_name),
+            device_info=device_info_system(install_id, install_name, hass=coordinator.hass),
             translation_key="last_session_energy",
         ),
         JullixLastSessionIdSensor(
@@ -40,7 +40,7 @@ def create_session_history_entities(
             recorder=recorder,
             unique_id=f"{install_id}_last_session_id",
             name="Last session ID",
-            device_info=device_info_system(install_id, install_name),
+            device_info=device_info_system(install_id, install_name, hass=coordinator.hass),
             translation_key="last_session_id",
         ),
     ]

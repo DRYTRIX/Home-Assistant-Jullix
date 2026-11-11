@@ -15,9 +15,9 @@ def _is_enabled(obj: dict[str, Any]) -> bool:
         return True
     if obj.get("on") is True:
         return True
-    if obj.get("state", "").lower() in ("on", "charging", "enabled"):
+    if str(obj.get("state") or "").lower() in ("on", "charging", "enabled"):
         return True
-    if obj.get("status", "").lower() in ("on", "charging", "enabled"):
+    if str(obj.get("status") or "").lower() in ("on", "charging", "enabled"):
         return True
     if obj.get("plug_state") is True:
         return True
@@ -64,3 +64,9 @@ def test_is_enabled_false():
     assert _is_enabled({"active": False}) is False
     assert _is_enabled({"state": "off"}) is False
     assert _is_enabled({"status": "idle"}) is False
+
+
+def test_is_enabled_int_state_does_not_raise():
+    """Integer state/status must not raise (API sometimes returns ints)."""
+    assert _is_enabled({"state": 1}) is False
+    assert _is_enabled({"status": 0}) is False
