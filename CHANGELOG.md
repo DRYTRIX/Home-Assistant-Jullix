@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.12.2] - 2026-11-11
+
+### Fixed
+
+- **Hassfest:** removed `aiohttp` from manifest `requirements` (provided by Home Assistant core).
+- **Zeroconf discovery:** stop re-prompting to add Jullix after it is already configured (unique_id mismatch between discovery and the config entry).
+
 ## [1.12.1] - 2026-11-11
 
 ### Fixed

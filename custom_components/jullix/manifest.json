@@ -9,7 +9,7 @@
   "issue_tracker": "https://github.com/DRYTRIX/Home-Assistant-Jullix/issues",
   "quality_scale": "bronze",
   "requirements": [],
-  "version": "1.12.1",
+  "version": "1.12.2",
   "zeroconf": [
     {
       "type": "_http._tcp.local.",
