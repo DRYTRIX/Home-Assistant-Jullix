@@ -110,6 +110,31 @@ def install_ids_already_configured(
     return False
 
 
+def _normalize_local_host(value: str | None) -> str:
+    """Normalize a host/hostname for comparison."""
+    return (value or "").strip().lower().rstrip(".")
+
+
+def local_host_already_configured(
+    entries: list[config_entries.ConfigEntry],
+    host: str,
+    hostname: str | None = None,
+) -> bool:
+    """Return True when discovered host/hostname matches an entry local_host."""
+    candidates = {_normalize_local_host(host)}
+    hn = _normalize_local_host(hostname)
+    if hn:
+        candidates.add(hn)
+    candidates.discard("")
+    if not candidates:
+        return False
+    for entry in entries:
+        configured = _normalize_local_host(entry.data.get(CONF_LOCAL_HOST))
+        if configured and configured in candidates:
+            return True
+    return False
+
+
 def _default_options() -> dict[str, Any]:
     """Options for new config entries."""
     return {
@@ -161,6 +186,15 @@ class JullixConfigFlow(ConfigFlow, domain=DOMAIN):
         name_l = (discovery_info.name or "").lower()
         if "jullix" not in hn and "jullix" not in name_l:
             return self.async_abort(reason="not_jullix")
+
+        # Entry unique_id is install-based (jullix_*), not zeroconf_{host}, so
+        # rediscovery would otherwise keep prompting after a successful setup.
+        current_entries = self._async_current_entries()
+        if current_entries or local_host_already_configured(
+            current_entries, host, discovery_info.hostname
+        ):
+            return self.async_abort(reason="already_configured")
+
         await self.async_set_unique_id(f"zeroconf_{host}", raise_on_progress=False)
         self._abort_if_unique_id_configured()
         self._discovered_host = host

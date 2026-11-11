@@ -22,6 +22,7 @@ from custom_components.jullix.config_flow import (
     JullixConfigFlow,
     JullixOptionsFlowHandler,
     _validate_token,
+    local_host_already_configured,
 )
 from custom_components.jullix.const import (
     CONF_API_TOKEN,
@@ -54,8 +55,10 @@ def _make_flow():
     flow._discovered_host = None
     flow.async_set_unique_id = AsyncMock(return_value=None)
     flow._abort_if_unique_id_configured = MagicMock()
+    flow._async_current_entries = MagicMock(return_value=[])
     flow.async_show_form = MagicMock(return_value={"type": "form"})
     flow.async_create_entry = MagicMock(return_value={"type": "create_entry"})
+    flow.async_abort = MagicMock(return_value={"type": "abort"})
     flow.async_show_progress = MagicMock(
         return_value={"type": FlowResultType.SHOW_PROGRESS, "progress_action": "x"}
     )
@@ -475,10 +478,24 @@ async def test_step_zeroconf_jullix_sets_host_and_user_form():
 
 
 @pytest.mark.asyncio
+async def test_step_zeroconf_aborts_when_already_configured():
+    """Zeroconf aborts immediately when a Jullix entry already exists."""
+    flow = _make_flow()
+    flow._async_current_entries = MagicMock(return_value=[MagicMock()])
+    info = MagicMock()
+    info.host = "192.168.1.50"
+    info.hostname = "jullix.local."
+    info.name = "Jullix"
+    result = await flow.async_step_zeroconf(info)
+    assert result["type"] == "abort"
+    flow.async_abort.assert_called_once_with(reason="already_configured")
+    flow.async_set_unique_id.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_step_zeroconf_non_jullix_aborts():
     """Zeroconf without jullix in host or name aborts."""
     flow = _make_flow()
-    flow.async_abort = MagicMock(return_value={"type": "abort"})
     info = MagicMock()
     info.host = "192.168.1.1"
     info.hostname = "router.local."
@@ -486,6 +503,18 @@ async def test_step_zeroconf_non_jullix_aborts():
     result = await flow.async_step_zeroconf(info)
     assert result["type"] == "abort"
     flow.async_abort.assert_called_once_with(reason="not_jullix")
+
+
+def test_local_host_already_configured_matches_hostname():
+    """local_host_already_configured matches normalized hostname."""
+    entry = MagicMock()
+    entry.data = {CONF_LOCAL_HOST: "Jullix.local."}
+    assert local_host_already_configured(
+        [entry], "192.168.1.50", "jullix.local."
+    )
+    assert not local_host_already_configured(
+        [entry], "192.168.1.50", "other.local."
+    )
 
 
 @pytest.mark.asyncio
